@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel de Controle - POSITIVO</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+        button, input {
+            font-size: 1rem;
+            margin: 5px;
+        }
+        #status, #mensagem-servidor {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .botoes {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .linha-campos {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            margin-bottom: 20px;
+        }
+        .campo {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .campo label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .campo input:disabled {
+            background-color: #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <!-- Indicador de status da Produção -->
+    <div class="row row-cols-auto" style="font-weight: bold;">
+      <div class="col">
+          <div>Produção: </div>
+      </div>
+      <div class="col">
+          <!-- Elemento onde o status será exibido via JavaScript -->
+          <div id="status-indicador">Verificando...</div>
+      </div>
+    </div>
+
+    <div style="text-align:center">
+        <img src="../static/img/positivo.jpg" width="400" height="341"/>
+    </div>
+    <h1 style="text-align:center;">Painel de Controle</h1>
+    <!-- Formulário com os tempos -->
+    <form id="form-start">
+        <h2 style="text-align:center;">Configuração de Tempos</h2>
+        <div class="linha-campos">
+            <div class="campo">
+                <label for="tempoBIOS">Tempo Bios</label>
+                <input type="number" id="tempoBIOS" name="tempoBIOS" min="0" required>
+            </div>
+            <div class="campo">
+                <label for="tempoRUNIN">Tempo Runin</label>
+                <input type="number" id="tempoRUNIN" name="tempoRUNIN" min="0" required>
+            </div>
+            <div class="campo">
+                <label for="tempoRETRABALHO">Tempo Download Final</label>
+                <input type="number" id="tempoRETRABALHO" name="tempoRETRABALHO" min="0" required>
+            </div>
+            <div class="campo">
+                <label for="tempoTESTE">Tempo Teste</label>
+                <input type="number" id="tempoTESTE" name="tempoTESTE" min="0" required>
+            </div>
+        </div>
+        <div class="botoes">
+            <button type="submit">▶️ Iniciar Sistema</button>
+            <button type="button" onclick="enviarComando('Restart')">🔁 Reiniciar Sistema</button>
+            <button type="button" onclick="enviarComando('Restart_Produtos')">🔁 Reiniciar Produtos</button>
+        </div>
+    </form>
+    <!-- Áreas de status -->
+    <div id="status" style="text-align:center;">Status: aguardando envio...</div>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        // Enviar todos os dados ao clicar em "Start"
+        document.getElementById('form-start').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const tempoBIOS = document.getElementById('tempoBIOS').value;
+            const tempoRUNIN = document.getElementById('tempoRUNIN').value;
+            const tempoRETRABALHO = document.getElementById('tempoRETRABALHO').value;
+            const tempoTESTE = document.getElementById('tempoTESTE').value;
+
+            if (tempoBIOS && tempoRUNIN && tempoRETRABALHO && tempoTESTE) {
+                const dados = {
+                    tipo: 'start',
+                    tempoBIOS,
+                    tempoRUNIN,
+                    tempoRETRABALHO,
+                    tempoTESTE
+                };
+
+                // Atualiza o status antes de enviar a requisição ao servidor
+                atualizarStatus({ status: 'sucesso', mensagem: '🔄 Processando... Aguarde!' });
+
+                // Bloqueia os campos e botões após o envio
+                bloquearCampos(true);
+                bloquearBotoes(true);
+
+                fetch('/enviar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    atualizarStatus(data);
+                })
+                .catch(() => {
+                    mostrarErro();
+                    // Desbloqueia campos e botões se houver erro
+                    bloquearCampos(false);
+                    bloquearBotoes(false);
+                });
+            } else {
+                alert('Por favor, preencha todos os campos de tempo antes de iniciar o sistema.');
+            }
+        });
+
+        // Função para bloquear ou desbloquear os campos de tempo
+        function bloquearCampos(bloquear) {
+            document.getElementById('tempoBIOS').disabled = bloquear;
+            document.getElementById('tempoRUNIN').disabled = bloquear;
+            document.getElementById('tempoRETRABALHO').disabled = bloquear;
+            document.getElementById('tempoTESTE').disabled = bloquear;
+        }
+
+        // Função para bloquear ou desbloquear os botões
+        function bloquearBotoes(bloquear) {
+            document.querySelector('button[type="submit"]').disabled = bloquear; // Bloqueia o botão "Iniciar Sistema"
+            const reiniciarProdutosBtn = document.querySelector('button[onclick="enviarComando(\'Restart_Produtos\')"]');
+            reiniciarProdutosBtn.disabled = bloquear; // Bloqueia o botão "Reiniciar Produtos"
+        }
+
+        // Envia comandos simples (reiniciar etc.)
+        function enviarComando(comando) {
+            fetch('/enviar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tipo: 'comando', mensagem: comando })
+            })
+            .then(response => response.json())
+            .then(data => {
+                atualizarStatus(data);
+                // Se o comando for "Reiniciar", desbloqueia campos e botões
+                if (comando === 'Restart') {
+                    bloquearCampos(false);
+                    bloquearBotoes(false);
+                }
+            })
+            .catch(() => mostrarErro());
+        }
+        socket.on('atualiza_status_producao', data => {
+            const elemento = document.getElementById('status-indicador');
+            if (data.status === true) {
+            elemento.textContent = 'Ligada 🟢'; // Mostra status positivo com emoji verde
+            elemento.style.color = 'green';        // Muda a cor do texto para verde
+            } else {
+            elemento.textContent = 'Desligada 🔴'; // Mostra status negativo com emoji vermelho
+            elemento.style.color = 'red';             // Muda a cor do texto para vermelho
+            }
+        });
+        function atualizarStatus(data) {
+            const statusDiv = document.getElementById('status');
+
+            // Atualização de status baseada na resposta do servidor ou ação do usuário
+            if (data.status === 'sucesso') {
+                statusDiv.textContent = data.mensagem || "✅ Mensagem enviada com sucesso.";
+                statusDiv.style.color = "green";
+            } else {
+                statusDiv.textContent = "❌ Erro ao enviar.";
+                statusDiv.style.color = "red";
+            }
+        }
+
+        function mostrarErro() {
+            document.getElementById('status').textContent = "❌ Erro na comunicação com o servidor.";
+            document.getElementById('status').style.color = "red";
+        }
+
+        async function checarPing() {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 1000); // 1 segundo de limite
+
+            try {
+                const resp = await fetch("/ping", { signal: controller.signal });
+                clearTimeout(timeout);
+
+                if (!resp.ok) throw new Error(resp.status);
+
+                console.log("Servidor ok, recarregando...");
+                location.reload(); // só recarrega quando o servidor está realmente no ar
+            } catch (e) {
+                console.warn("Servidor indisponível, tentando novamente...");
+                setTimeout(checarPing, 1000); // tenta de novo em 1s
+            }
+        }
+
+        // quando desconectar, ativa monitoramento
+        socket.on("disconnect", () => {
+            console.warn("Socket.IO desconectado, iniciando checagem...");
+            checarPing();
+        });
+
+        // quando reconectar, cancela monitoramento
+        socket.on("connect", () => {
+            console.log("Socket.IO reconectado!");
+        });
+
+    </script>
+</body>
+</html>

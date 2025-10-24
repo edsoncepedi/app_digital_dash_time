@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Sistema de Associação</title>
+
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+    <!-- Importando o CSS do Bootstrap 5 para estilização -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous">
+
+    <!-- Scripts JS personalizados para lógica dos formulários e conexão com o banco -->
+    <script src="{{ url_for('static', filename='scripts/forms.js') }}" defer></script>
+
+</head>
+<body>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <div class="container">
+          <!-- Indicador de status da Produção -->
+          <div class="row row-cols-auto" style="font-weight: bold;">
+              <div class="col">
+                  <div>Produção: </div>
+              </div>
+              <div class="col">
+                  <!-- Elemento onde o status será exibido via JavaScript -->
+                  <div id="status-indicador">Verificando...</div>
+              </div>
+          </div>
+
+        <!-- Título da página -->
+        <h1 style="text-align:center;padding-right: 100px;padding-left: 100px;padding-top: 100px;">Associação de Produtos</h1>
+
+        <div id="popup-aviso" style="
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 35px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            z-index: 10000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            max-width: 80%;
+            text-align: center;
+        "></div>
+
+        <!-- Imagem ilustrativa centralizada -->
+        <div style="text-align:center"><img src="../static/img/positivo.jpg" width="400" height="341"/></div>
+
+        <!-- Campos de entrada para produto e palete -->
+        <div class="row">
+            <!-- Campo para o código do produto -->
+            <div class="col">
+              <label for="produto" class="form-label"><h3>Código do Produto</h3></label>
+              <input type="text" class="form-control" id="produto" placeholder="Aguardando Produto" oninput="checkAndAdvance(this, 'palete')" readonly>
+            </div>
+            <!-- Campo para o código do palete -->
+            <div class="col">
+              <label for="palete" class="form-label"><h3>Código do Palete</h3></label>
+              <input type="text" class="form-control" id="palete" placeholder="Aguardando Palete" oninput="checkAndAdvance(this)" disabled="true" autofocus>
+            </div>
+        </div>
+
+        <!-- Área onde será exibida a resposta do sistema após a associação -->
+        <div style="padding-top: 100px;">
+            <h1><div id="resposta" style="text-align:center;margin-top:20px; color: green; font-weight: bold;"></div></h1>
+        </div>
+     <!-- Script JS do Bootstrap para funcionalidades interativas (como dropdowns, modais etc.) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
+</body>
+</html>
