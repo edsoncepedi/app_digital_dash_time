@@ -58,9 +58,9 @@ def configurar_rotas(app, mqttc, socketio):
                     # Se o comando for de impressão de produto chama-se a função de gerar produto e depois ele é impresso
                     if comando == 'imprime_produto':
                         produto = gera_codigo_produto()
-                        imprime_qrcode(produto)
+                        #imprime_qrcode(produto)
                         socketio.emit('add_produto_impresso', {'codigo': produto})
-                        mqttc.publish(f"rastreio/esp32/posto_0/dispositivo", "BS")
+                        mqttc.publish(f"rastreio_nfc/esp32/posto_0/dispositivo", "BS")
                         print(f'IMPRIMINDO CÓDIGO DE PRODUTO {produto}')
                     return f"Comando Executado: {comando}"
                 else:
@@ -92,15 +92,7 @@ def configurar_rotas(app, mqttc, socketio):
                 return jsonify(status='erro', mensagem=f'Erro ao enviar dados: {e}'), 400
 
             #Enviando Tópicos para os dispositivos temporizadores
-            mqttc.publish(f"TempoBIOS", f"{tempoBIOS}")
-            sleep(1)
-            mqttc.publish(f"TempoRUNIN", f"{tempoRUNIN}")
-            sleep(1)
-            mqttc.publish(f"TempoRETRABALHO", f"{tempoRETRABALHO}")
-            sleep(1)
-            mqttc.publish(f"TempoTESTE", f"{tempoTESTE}")
-            sleep(1)
-            mqttc.publish(f"ControleProducao", f"Start")
+            mqttc.publish(f"ControleProducao_DD", f"Start")
 
             #Retorna para a página o sucesso da inicialização do sistema
             return jsonify(status='sucesso', mensagem='O Sistema foi inciado: Produção ON'), 200
@@ -157,7 +149,7 @@ def configurar_rotas(app, mqttc, socketio):
                 classes.adicionarProduto(produto)
                 #Inicia a contagem do tempo de tranporte no posto 0
                 classes.tratamento_palete(palete, "posto_0", mqttc)
-                mqttc.publish(f"rastreio/esp32/posto_0/dispositivo", "BD")
+                mqttc.publish(f"rastreio_nfc/esp32/posto_0/dispositivo", "BD")
                 # Coleta a data e hora, do instante quando os dados foram recebidos, para armazenar nas tabelas
                 horario = str(datetime.now().strftime("%d/%m/%Y, %H:%M:%S"))
                 # Modelo para enviar os dados para a tabela de Associações.

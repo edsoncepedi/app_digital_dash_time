@@ -57,12 +57,18 @@ class Produto:
         
 #DEFINIÇÃO DE FUNÇÕES
 def chama_objeto(nome_objeto, objeto_default):
-    caminho = f"objetos_memory/{nome_objeto}.pkl"
+    pasta = "objetos_memory"
+    os.makedirs(pasta, exist_ok=True)  # garante que a pasta exista
+
+    caminho = os.path.join(pasta, f"{nome_objeto}.pkl")
+
     if os.path.isfile(caminho):
-        with open(caminho, "rb") as f:
-            return pickle.load(f)
-    else:
-        return objeto_default
+        try:
+            with open(caminho, "rb") as f:
+                return pickle.load(f)
+        except (pickle.UnpicklingError, EOFError, Exception):
+            print(f"[AVISO] Falha ao carregar '{caminho}', usando objeto padrão.")
+    return objeto_default
 
 # ELEMENTOS DE MEMÓRIA
 listaProdutos = chama_objeto('listaProdutos', {})
@@ -294,7 +300,7 @@ def envia_dados_tempo(dispositivo, time, produto_idem = '', recupera=False, zera
         print(f'[RASTREADOR] - Erro: Esse {produto_idem} não é um produto.')
 
 def tratar_rastreador(mqttc, message):
-    if message.topic.split("/")[0] == "rastreio" and inicia_producao:
+    if message.topic.split("/")[0] == 'rastreio_nfc' and inicia_producao:
         global contagem_erros
         dispositivo = message.topic.split("/")[2]
         agente = message.topic.split("/")[3]
@@ -302,7 +308,7 @@ def tratar_rastreador(mqttc, message):
         dispositivo_posterior = 'posto_' + str(n_posto + 1)
         dispositivo_anterior = 'posto_' + str(n_posto - 1)
         payload = str(str(message.payload).split("'")[1])
-        if agente == 'dispositivo' and message.topic.split("/")[0] == 'rastreio':
+        if agente == 'dispositivo':
             if payload in tempo.keys():
                 #cria a máquina de estados verificando se ela ja existe
                 if dispositivo not in maquina_estado.keys():
@@ -453,7 +459,7 @@ def inicia_sistema_rastreador(message):
     global hora_inicio
     global inicia_producao
     payload = str(str(message.payload).split("'")[1])
-    if message.topic == "ControleProducao" and payload == "Start":
+    if message.topic == "ControleProducao_DD" and payload == "Start":
         print('Recebi o Start')
         hora_inicio = datetime.now()
         inicia_producao = True
