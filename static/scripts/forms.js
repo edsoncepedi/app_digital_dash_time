@@ -32,8 +32,6 @@ function mostrarResposta(mensagem, cor) {
     respostaDiv.style.color = cor;
 }
 
-
-
 // Conexão com o servidor Socket.IO
 const socket = io();
 
@@ -85,6 +83,15 @@ function mostrarPopup(mensagem, cor = '#333', duracao_ms = 3000) {
         popup.style.display = 'none';
     }, duracao_ms);
 }
+
+socket.on('palete_recebido', data => {
+    const palete = document.getElementById("palete").value.trim();
+    if (verificaCodQrPalete(palete)) {
+        socket.emit('campo_palete', { palete: true });
+    }else {
+        socket.emit('campo_palete', { palete: false });
+    }
+});
 
 // Função principal que lida com a navegação e envio após validação
 async function checkAndAdvance() {

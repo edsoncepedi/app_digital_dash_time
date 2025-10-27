@@ -45,16 +45,24 @@ def configurar_rotas(app, mqttc, socketio):
             comando = dados.get('comando')
             # Se o comando for de impressão de produto chama-se a função de gerar produto e depois ele é impresso
             if comando == 'imprime_produto':
-                produto = gera_codigo_produto()
-                #imprime_qrcode(produto)
-                socketio.emit('add_produto_impresso', {'codigo': produto})
-                mqttc.publish(f"rastreio_nfc/esp32/posto_0/dispositivo", "BS")
-                print(f'IMPRIMINDO CÓDIGO DE PRODUTO {produto}')
+                socketio.emit('palete_recebido')
             return f"Comando Executado: {comando}"
         else:
             socketio.emit('aviso_ao_operador_assoc', {'mensagem': "Produção não inciada. Não foi processado nenhum comando.", 'cor': "#dc3545", 'tempo': 3000})
             return f"Produção não inciada. Não foi processado nenhum comando."
 
+    @socketio.on('campo_palete')
+    def campo_palete(data):
+        cod_palete = data['palete']
+        if cod_palete:
+            produto = gera_codigo_produto()
+            #imprime_qrcode(produto)
+            socketio.emit('add_produto_impresso', {'codigo': produto})
+            mqttc.publish(f"rastreio_nfc/esp32/posto_0/dispositivo", "BS")
+            print(f'IMPRIMINDO CÓDIGO DE PRODUTO {produto}')
+        else:
+            socketio.emit('aviso_ao_operador_assoc', {'mensagem': "Antes de gerar um produto. Insira o palete no posto", 'cor': "#ffc107", 'tempo': 2000})
+        #evento_resposta.set()
 
     #Rota para o acesso da interface de controle
     @app.route('/controle')
