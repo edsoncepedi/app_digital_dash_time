@@ -59,6 +59,7 @@
     </div>
     <h1 style="text-align:center;">Painel de Controle</h1>
     <!-- Formulário com os tempos -->
+     <!--
     <form id="form-start">
         <h2 style="text-align:center;">Configuração de Tempos</h2>
         <div class="linha-campos">
@@ -84,13 +85,19 @@
             <button type="button" onclick="enviarComando('Restart')">🔁 Reiniciar Sistema</button>
             <button type="button" onclick="enviarComando('Restart_Produtos')">🔁 Reiniciar Produtos</button>
         </div>
-    </form>
+    </form>-->
+    <div class="botoes">
+        <button type="button" onclick="enviarComando('Start')">▶️ Iniciar Sistema</button>
+        <button type="button" onclick="enviarComando('Restart')">🔁 Reiniciar Sistema</button>
+        <button type="button" onclick="enviarComando('Restart_Produtos')">🔁 Reiniciar Produtos</button>
+    </div>
     <!-- Áreas de status -->
     <div id="status" style="text-align:center;">Status: aguardando envio...</div>
     <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
     <script>
         const socket = io();
         // Enviar todos os dados ao clicar em "Start"
+        /*
         document.getElementById('form-start').addEventListener('submit', function(e) {
             e.preventDefault();
             const tempoBIOS = document.getElementById('tempoBIOS').value;
@@ -132,22 +139,7 @@
             } else {
                 alert('Por favor, preencha todos os campos de tempo antes de iniciar o sistema.');
             }
-        });
-
-        // Função para bloquear ou desbloquear os campos de tempo
-        function bloquearCampos(bloquear) {
-            document.getElementById('tempoBIOS').disabled = bloquear;
-            document.getElementById('tempoRUNIN').disabled = bloquear;
-            document.getElementById('tempoRETRABALHO').disabled = bloquear;
-            document.getElementById('tempoTESTE').disabled = bloquear;
-        }
-
-        // Função para bloquear ou desbloquear os botões
-        function bloquearBotoes(bloquear) {
-            document.querySelector('button[type="submit"]').disabled = bloquear; // Bloqueia o botão "Iniciar Sistema"
-            const reiniciarProdutosBtn = document.querySelector('button[onclick="enviarComando(\'Restart_Produtos\')"]');
-            reiniciarProdutosBtn.disabled = bloquear; // Bloqueia o botão "Reiniciar Produtos"
-        }
+        }); */
 
         // Envia comandos simples (reiniciar etc.)
         function enviarComando(comando) {
@@ -167,6 +159,7 @@
             })
             .catch(() => mostrarErro());
         }
+
         socket.on('atualiza_status_producao', data => {
             const elemento = document.getElementById('status-indicador');
             if (data.status === true) {
@@ -177,6 +170,7 @@
             elemento.style.color = 'red';             // Muda a cor do texto para vermelho
             }
         });
+
         function atualizarStatus(data) {
             const statusDiv = document.getElementById('status');
 

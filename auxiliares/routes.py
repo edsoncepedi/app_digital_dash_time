@@ -68,6 +68,7 @@ def configurar_rotas(app, mqttc, socketio):
         #Se for o comando Start
         if dados and dados['tipo'] == 'start':
             # Processa os dados do start
+            """
             try:
                 tempoBIOS = int(dados['tempoBIOS'])
                 tempoRUNIN = int(dados['tempoRUNIN'])
@@ -75,7 +76,7 @@ def configurar_rotas(app, mqttc, socketio):
                 tempoTESTE = int(dados['tempoTESTE'])
             except Exception as e:
                 return jsonify(status='erro', mensagem=f'Erro ao enviar dados: {e}'), 400
-
+            """
             #Enviando Tópicos para os dispositivos temporizadores
             mqttc.publish(f"ControleProducao_DD", f"Start")
 
@@ -86,15 +87,23 @@ def configurar_rotas(app, mqttc, socketio):
             comando = dados['mensagem']
 
             # Lógica para tratar comandos diferentes
-            if comando == 'Restart':
+            if comando == 'Start':
+                #Enviando Tópicos para os dispositivos temporizadores
+                mqttc.publish(f"ControleProducao_DD", f"Start")
+                #Retorna para a página o sucesso da inicialização do sistema
+                return jsonify(status='sucesso', mensagem='O Sistema foi inciado: Produção ON'), 200
+            
+            elif comando == 'Restart':
                 # Lógica para reiniciar o sistema
                 reiniciar_produtos()
                 reiniciar_sistema()
                 return jsonify(status='sucesso', mensagem='Sistema reiniciado.'), 200
+            
             elif comando == 'Restart_Produtos':
                 # Lógica para reiniciar produtos
                 reiniciar_produtos()
                 return jsonify(status='sucesso', mensagem='Produtos reiniciados.'), 200
+            
             else:
                 return jsonify(status='erro', mensagem='Comando desconhecido.'), 400
 
