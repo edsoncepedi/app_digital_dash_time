@@ -8,6 +8,7 @@ import auxiliares.classes as classes
 from PIL import Image
 from threading import Event
 from auxiliares.socketio_handlers import tem_cliente_associacao
+from auxiliares.configuracoes import cartao_palete
 
 evento_resposta = Event()
 #import io
@@ -37,37 +38,21 @@ def configurar_rotas(app, mqttc, socketio):
     #Rota para enviar comandos do Raspberry
     @app.route("/comando", methods=['POST'])
     def comando():
-        global aguardando_palete, resposta_recebida
-
-        resposta_recebida = None
-        evento_resposta.clear()
-
-        socketio.emit('pedir_estado_aguardando')
-
-        # espera até 2 segundos pela resposta
-        if evento_resposta.wait(timeout=1):
-            if resposta_recebida:
-                socketio.emit('aviso_ao_operador_assoc',
-                              {'mensagem': "Cliente está aguardando palete, Finalize o Processo", 'cor': "#ffc107",
-                               'tempo': 3000})
-                return "Cliente está aguardando palete, não enviando código."
-            else:
-                if classes.verifica_estado_producao():
-                    dados = request.get_json(silent=True)
-                    comando = dados.get('comando')
-                    # Se o comando for de impressão de produto chama-se a função de gerar produto e depois ele é impresso
-                    if comando == 'imprime_produto':
-                        produto = gera_codigo_produto()
-                        #imprime_qrcode(produto)
-                        socketio.emit('add_produto_impresso', {'codigo': produto})
-                        mqttc.publish(f"rastreio_nfc/esp32/posto_0/dispositivo", "BS")
-                        print(f'IMPRIMINDO CÓDIGO DE PRODUTO {produto}')
-                    return f"Comando Executado: {comando}"
-                else:
-                    socketio.emit('aviso_ao_operador_assoc', {'mensagem': "Produção não inciada. Não foi processado nenhum comando.", 'cor': "#dc3545", 'tempo': 3000})
-                    return f"Produção não inciada. Não foi processado nenhum comando."
+        if classes.verifica_estado_producao():
+            dados = request.get_json(silent=True)
+            comando = dados.get('comando')
+            # Se o comando for de impressão de produto chama-se a função de gerar produto e depois ele é impresso
+            if comando == 'imprime_produto':
+                produto = gera_codigo_produto()
+                #imprime_qrcode(produto)
+                socketio.emit('add_produto_impresso', {'codigo': produto})
+                mqttc.publish(f"rastreio_nfc/esp32/posto_0/dispositivo", "BS")
+                print(f'IMPRIMINDO CÓDIGO DE PRODUTO {produto}')
+            return f"Comando Executado: {comando}"
         else:
-            return "Timeout: não recebeu resposta do cliente, bloqueando envio."
+            socketio.emit('aviso_ao_operador_assoc', {'mensagem': "Produção não inciada. Não foi processado nenhum comando.", 'cor': "#dc3545", 'tempo': 3000})
+            return f"Produção não inciada. Não foi processado nenhum comando."
+
 
     #Rota para o acesso da interface de controle
     @app.route('/controle')
@@ -149,7 +134,7 @@ def configurar_rotas(app, mqttc, socketio):
                 classes.adicionarProduto(produto)
                 #Inicia a contagem do tempo de tranporte no posto 0
                 classes.tratamento_palete(palete, "posto_0", mqttc)
-                mqttc.publish(f"rastreio_nfc/esp32/posto_0/dispositivo", "BD")
+                #mqttc.publish(f"rastreio_nfc/esp32/posto_0/dispositivo", "BD")
                 # Coleta a data e hora, do instante quando os dados foram recebidos, para armazenar nas tabelas
                 horario = str(datetime.now().strftime("%d/%m/%Y, %H:%M:%S"))
                 # Modelo para enviar os dados para a tabela de Associações.

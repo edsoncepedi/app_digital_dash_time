@@ -1,5 +1,6 @@
 from auxiliares.classes import tratar_rastreador, inicia_sistema_rastreador
 from auxiliares.utils import trata_ips
+from auxiliares.front_assoc import front_mqtt_assoc
 
 def configurar_mqtt_handlers(mqtt, socketio):
     @mqtt.on_connect()
@@ -14,6 +15,11 @@ def configurar_mqtt_handlers(mqtt, socketio):
             inicia_sistema_rastreador(message)
         except Exception as e:
             print(f"Erro tratamento Inicia_sistema_rastreador: {e}")
+
+        try:
+            front_mqtt_assoc(message, socketio)
+        except Exception as e:
+            print(f"Erro tratamento rastreadores: {e}")
 
         try:
             tratar_rastreador(mqtt, message)

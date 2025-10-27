@@ -23,4 +23,3 @@ def inicializa_Base_assoc():
 
     # Fim da sintaxe para a criação da tabela caso não existam.
     Base.metadata.create_all(bind=db)
-

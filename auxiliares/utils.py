@@ -8,6 +8,7 @@ import glob
 import shutil
 import sys
 from pyzbar.pyzbar import decode
+from auxiliares.configuracoes import cartao_palete
 
 #Dicionário que organiza as informações de ip e mac dos rastreadores
 informacoes_ips = {'ip':{},'mac':{}}
@@ -82,6 +83,12 @@ def verifica_palete(texto):
             return True
         else:
             return False
+    else:
+        return False
+
+def verifica_palete_nfc(palete):
+    if palete in cartao_palete.keys():
+        return True
     else:
         return False
 

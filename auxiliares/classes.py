@@ -1,13 +1,15 @@
 import pandas as pd
 import os
 from datetime import datetime
-from auxiliares.utils import verifica_cod_produto, verifica_palete
+from auxiliares.utils import verifica_cod_produto, verifica_palete, verifica_palete_nfc
 from auxiliares.banco_post import inserir_dados, Conectar_DB, atualizar_tempo_transporte
 import pickle
+from auxiliares.configuracoes import cartao_palete
 from auxiliares.configuracoes import ultimo_posto_bios
 
 #--------------------------------------------------------------------------------------------------------------------------
 produto_atual = {}
+palete_atual = {}
 tempo = {"BS": {}, "BT1": {}, "BT2": {}, "BD": {}}
 dados = {"arrival": {}, "preparo": {}, "montagem": {}, "espera": {}, "transferencia": {}}
 data_frame_postos = {}
@@ -323,16 +325,6 @@ def tratar_rastreador(mqttc, message):
 
                 #máquina de estados
                 if payload == 'BS':
-                    """
-                    try:
-                        #Ao receber o BS devem ser enviadas as informações do dispositivo anterior. Esse try verifica se é possível enviar esses dados.
-                        if n_posto > 1 and maquina_estado[dispositivo_anterior] == 4:
-                            #envia_dados_tempo(dispositivo_anterior, tempo['BS'][dispositivo])
-                            maquina_estado[dispositivo_anterior] = 0
-                        #Caso o produto não seja encontrado a função envia dados dará erro
-                    except KeyError:
-                        print(f'[RASTREADOR {n_posto}] Dados do posto anterior não encontrados')
-                    """
                     if maquina_estado[dispositivo] == 0 or maquina_estado[dispositivo] == 4:
                         print(f'[RASTREADOR {n_posto}] - ESTADO 1 - BS')
                         dados['arrival'][dispositivo] = (tempo['BS'][dispositivo] - tempo['BD'][dispositivo]).seconds
@@ -412,6 +404,10 @@ def tratar_rastreador(mqttc, message):
                                 print(f'Produto adicionado a fila do Rastreador {n_posto}')
                                 data_frame_postos[dispositivo] = pd.concat([data_frame_postos[dispositivo], pd.DataFrame(organiza)], ignore_index=True)
 
+                            if dispositivo == f"posto_{ultimo_posto_bios}":
+                                envia_dados_tempo(dispositivo, tempo['BD'][dispositivo], produto_idem=produto_atual[dispositivo], zera_transporte=True)
+                                associacoes.desassocia(produto_atual[dispositivo])
+
                             if dispositivo in erro_bd_atrasado.keys():
                                 if produto_atual[dispositivo] == erro_bd_atrasado[dispositivo][0]:
                                     envia_dados_tempo(dispositivo, erro_bd_atrasado[dispositivo][1], produto_idem=produto_atual[dispositivo])
@@ -439,21 +435,37 @@ def tratar_rastreador(mqttc, message):
                             else:
                                 print(f'Produto adicionado a fila do Rastrador {n_posto}')
                                 data_frame_postos[dispositivo] = pd.concat([data_frame_postos[dispositivo], pd.DataFrame(organiza)], ignore_index=True)
+
+                            if dispositivo == f"posto_{ultimo_posto_bios}":
+                                envia_dados_tempo(dispositivo, tempo['BD'][dispositivo], produto_idem=produto_atual[dispositivo], zera_transporte=True)
+                                associacoes.desassocia(produto_atual[dispositivo])
+
                             maquina_estado[dispositivo] = 4
                             maquina_estado_anterior[dispositivo] = 3
 
                             print("LEITURA NÃO FOI REALIZADA A TEMPO")
                     return
 
-            elif verifica_palete(payload):
-                tratamento_palete(payload, dispositivo, mqttc)
+            elif verifica_palete_nfc(payload):
+                if dispositivo == "posto_0":
+                    palete_atual[dispositivo] = cartao_palete[payload]
+                else:
+                    tratamento_palete(cartao_palete[payload], dispositivo, mqttc)
+
             else:
                 print("Código lido inválido!")
                 if contagem_erros <= 1:
-                    mqttc.publish(f"rastreio/esp32/{dispositivo}/sistema", "erro_0")
+                    mqttc.publish(f"rastreio_nfc/esp32/{dispositivo}/sistema", "erro_0")
                     contagem_erros += 1
                     return
-                mqttc.publish(f"rastreio/esp32/{dispositivo}/sistema", "iniciar_erro_1")
+                mqttc.publish(f"rastreio_nfc/esp32/{dispositivo}/sistema", "iniciar_erro_1")
+
+def palete_atual_posto(posto):
+    if posto in palete_atual.keys():
+        return palete_atual[posto]
+    else:
+        print("Posto não encontrado no dic palete_atual")
+        return None
 
 def inicia_sistema_rastreador(message):
     global hora_inicio
@@ -490,13 +502,17 @@ def tratamento_palete(payload, dispositivo, mqttc):
     global contagem_erros
     global erro_bd_atrasado
     global listaProdutos
+
     n_posto = int(dispositivo.split("_")[1])
+
     if n_posto > 0:
         dispositivo_anterior = 'posto_' + str(n_posto - 1)
     else:
         dispositivo_anterior = 'posto_0'
+    
     produto_lido = associacoes.palete_produto(payload)
     print(f"Produto: {produto_lido}, Palete: {payload}, Rastreador: {dispositivo}")
+
     if verifica_palete(payload):
         if verifica_cod_produto(produto_lido):
             produto_atual[dispositivo] = produto_lido

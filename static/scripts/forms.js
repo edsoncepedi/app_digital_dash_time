@@ -32,7 +32,7 @@ function mostrarResposta(mensagem, cor) {
     respostaDiv.style.color = cor;
 }
 
-let aguardandoPalete = false;
+
 
 // Conexão com o servidor Socket.IO
 const socket = io();
@@ -41,8 +41,6 @@ socket.on("connect", () => {
     mostrarResposta("", "green");
     document.getElementById("produto").value = "";
     document.getElementById("palete").value = "";
-    document.getElementById("palete").disabled = true        // Reinicia ciclo
-    aguardandoPalete = false
 });
 
 socket.emit('pagina_associacao_connect');
@@ -60,36 +58,21 @@ socket.on('atualiza_status_producao', data => {
 
 // Receber código do produto e preencher o campo automaticamente
 socket.on('add_produto_impresso', data => {
-    if (aguardandoPalete) {
-        return;
-    }
 const inputProduto = document.getElementById('produto');
 inputProduto.value = data.codigo;
-
 mostrarResposta("Código de produto recebido!", "green");
-document.getElementById("palete").disabled = false;
-const inputPalete = document.getElementById('palete');
-aguardandoPalete = true;
-inputPalete.focus();
-
+checkAndAdvance();
 });
 
-socket.on('pedir_estado_aguardando', () => {
-    socket.emit('resposta_estado_aguardando', { aguardando: aguardandoPalete });
+socket.on('add_palete_lido', data => {
+const inputPalete = document.getElementById('palete');
+inputPalete.value = data.codigo;
+mostrarResposta("Código de palete recebido!", "green");
+checkAndAdvance();
 });
 
 socket.on('aviso_ao_operador_assoc', data => {
     mostrarPopup(data.mensagem, data.cor, data.tempo);
-});
-
-// Event listener para quando o usuário pressionar Enter no campo de produto
-//document.getElementById("produto").addEventListener("keydown", function(event) {
-//   checkAndAdvance(event, this, "palete");
-//});
-
-// Event listener para quando o usuário pressionar Enter no campo de palete
-document.getElementById("palete").addEventListener("keydown", function(event) {
-    checkAndAdvance(event, this, null);
 });
 
 function mostrarPopup(mensagem, cor = '#333', duracao_ms = 3000) {
@@ -104,42 +87,10 @@ function mostrarPopup(mensagem, cor = '#333', duracao_ms = 3000) {
 }
 
 // Função principal que lida com a navegação e envio após validação
-async function checkAndAdvance(event, input, nextInputId) {
-    // Só executa a lógica se a tecla pressionada for Enter
-    if (event.key !== "Enter") return;
-
-    event.preventDefault(); // Evita comportamentos padrão do Enter
-
+async function checkAndAdvance() {
     // Captura os valores dos campos
     const produto = document.getElementById("produto").value.trim();
     const palete = document.getElementById("palete").value.trim();
-
-    // Validação do campo de produto
-    if (input.id === "produto") {
-        if (!verificaCodQrPrototipo(produto)) {
-            mostrarResposta("Código de produto inválido!", "red");
-            input.value = ""; // Limpa o campo
-            return;
-        } else {
-            mostrarResposta("Código de produto Recebido!", "green");
-            aguardandoPalete = true;
-            if (nextInputId) {
-                document.getElementById(nextInputId).focus();  // Move o foco para o próximo campo
-            }
-            return;
-        }
-    }
-
-    // Validação do campo de palete
-    if (input.id === "palete") {
-        if (!verificaCodQrPalete(palete)) {
-            mostrarResposta("Código de palete inválido!", "red");
-            input.value = "";
-            return;
-        } else {
-            mostrarResposta("Código de palete válido!", "green");
-        }
-    }
 
     // Se ambos os códigos forem válidos, envia para o backend
     if (verificaCodQrPrototipo(produto) && verificaCodQrPalete(palete)) {
@@ -163,13 +114,11 @@ async function checkAndAdvance(event, input, nextInputId) {
                 respostaDiv.style.color = "green";
 
                 const inputProduto = document.getElementById('produto');
-                inputProduto.disabled = false;
-                aguardandoPalete = false;
 
                 // Limpando os campos
                 document.getElementById("produto").value = "";
                 document.getElementById("palete").value = "";
-                document.getElementById("palete").disabled = true        // Reinicia ciclo
+
             // Se o palete já estiver vinculado
             } else if (resposta.includes("ERRO: PALETE JÁ VINCULADO")) {
                 // Mostra a mensagem de erro
