@@ -1,4 +1,5 @@
 from auxiliares.utils import verifica_palete_nfc, cartao_palete
+from auxiliares.classes import verifica_estado_producao
 
 troca_cor = {}
 
@@ -16,8 +17,10 @@ def front_mqtt_assoc(message, socketio):
     
     if sistema == "rastreio_nfc" and dispositivo == "posto_0" and agente == "dispositivo":
         if verifica_palete_nfc(payload):
-            print("Socket io ATUE")
-            socketio.emit('add_palete_lido', {'codigo': cartao_palete[payload]})
+            if verifica_estado_producao():
+                socketio.emit('add_palete_lido', {'codigo': cartao_palete[payload]})
+            else:
+                socketio.emit('aviso_ao_operador_assoc', {'mensagem': "Produção não iniciada. Retire o palete do Posto 0.", 'cor': "#dc3545", 'tempo': 3000})
         else:
             return
     else:
