@@ -7,7 +7,7 @@ def configurar_mqtt_handlers(mqtt, socketio):
     def handle_connect(client, userdata, flags, rc):
         print("Conectado ao broker MQTT.")
         mqtt.subscribe("#")
-        mqtt.publish(f"ControleProducao", f"Stop")
+        mqtt.publish(f"ControleProducao_DD", f"Stop")
 
     @mqtt.on_message()
     def handle_mqtt_message(client, userdata, message):
