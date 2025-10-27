@@ -135,11 +135,12 @@ def reiniciar_produtos():
         print("Resetando contagem de produtos...")
         os.remove("produtos.txt")
 
-def reiniciar_sistema():
-    horario = str(datetime.now().strftime("%d_%m_%Y_%H_%M_%S"))
-    # Cria pasta de backup, se necessário
-    pasta_backup = f"backup_{horario}"
-    os.makedirs(pasta_backup, exist_ok=True)
+def reiniciar_sistema(debug=False):
+    if not debug:    
+        horario = str(datetime.now().strftime("%d_%m_%Y_%H_%M_%S"))
+        # Cria pasta de backup, se necessário
+        pasta_backup = f"backup_{horario}"
+        os.makedirs(pasta_backup, exist_ok=True)
 
     arquivos = glob.glob("*.csv")
     arquivos.extend(glob.glob("*.xlsx"))
@@ -150,12 +151,13 @@ def reiniciar_sistema():
 
     for arquivo in arquivos:
         try:
-            # Define destino no backup (mantendo só o nome do arquivo)
-            destino_backup = os.path.join(pasta_backup, os.path.basename(arquivo))
+            if not debug:
+                # Define destino no backup (mantendo só o nome do arquivo)
+                destino_backup = os.path.join(pasta_backup, os.path.basename(arquivo))
 
-            # Faz backup
-            shutil.copy2(arquivo, destino_backup)
-            print(f"Backup feito: {arquivo} → {destino_backup}")
+                # Faz backup
+                shutil.copy2(arquivo, destino_backup)
+                print(f"Backup feito: {arquivo} → {destino_backup}")
 
             os.remove(arquivo)
             print(f"Removido: {arquivo}")

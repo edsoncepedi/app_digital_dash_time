@@ -15,6 +15,8 @@ evento_resposta = Event()
 import numpy as np
 #import cv2
 
+debug_mode=True
+
 def configurar_rotas(app, mqttc, socketio):
     @app.route("/ping")
     def ping():
@@ -96,7 +98,7 @@ def configurar_rotas(app, mqttc, socketio):
             elif comando == 'Restart':
                 # Lógica para reiniciar o sistema
                 reiniciar_produtos()
-                reiniciar_sistema()
+                reiniciar_sistema(debug=debug_mode)
                 return jsonify(status='sucesso', mensagem='Sistema reiniciado.'), 200
             
             elif comando == 'Restart_Produtos':
