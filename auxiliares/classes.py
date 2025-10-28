@@ -357,7 +357,7 @@ def tratar_rastreador(mqttc, message):
 
                 if payload == 'BD':
                     if contagem_erros == 2:
-                        mqttc.publish(f"rastreio/esp32/{dispositivo}/sistema", "parar_erro_1")
+                        mqttc.publish(f"rastreio/esp32/{dispositivo}/sistema", "dd_parar_erro_1")
                         contagem_erros = 0
 
                     if maquina_estado[dispositivo] == 1:
@@ -455,10 +455,10 @@ def tratar_rastreador(mqttc, message):
             else:
                 print("Código lido inválido!")
                 if contagem_erros <= 1:
-                    mqttc.publish(f"rastreio_nfc/esp32/{dispositivo}/sistema", "erro_0")
+                    mqttc.publish(f"rastreio_nfc/esp32/{dispositivo}/sistema", "dd_erro_0")
                     contagem_erros += 1
                     return
-                mqttc.publish(f"rastreio_nfc/esp32/{dispositivo}/sistema", "iniciar_erro_1")
+                mqttc.publish(f"rastreio_nfc/esp32/{dispositivo}/sistema", "dd_iniciar_erro_1")
 
 def palete_atual_posto(posto):
     if posto in palete_atual.keys():
@@ -555,11 +555,11 @@ def tratamento_palete(payload, dispositivo, mqttc):
         else:
             print("Não foi possível validar o palete!")
             contagem_erros = 2
-            mqttc.publish(f"rastreio/esp32/{dispositivo}/sistema", "iniciar_erro_1")
+            mqttc.publish(f"rastreio/esp32/{dispositivo}/sistema", "dd_iniciar_erro_1")
     else:
         print("Código lido inválido!")
         if contagem_erros <= 1:
-            mqttc.publish(f"rastreio/esp32/{dispositivo}/sistema", "erro_0")
+            mqttc.publish(f"rastreio/esp32/{dispositivo}/sistema", "dd_erro_0")
             contagem_erros += 1
             return
-        mqttc.publish(f"rastreio/esp32/{dispositivo}/sistema", "iniciar_erro_1")
+        mqttc.publish(f"rastreio/esp32/{dispositivo}/sistema", "dd_iniciar_erro_1")
