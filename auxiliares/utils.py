@@ -166,17 +166,8 @@ def reiniciar_sistema(debug=False):
 
     reiniciar_produtos()
 
-# O comando CHAVE:
-    # 1. '1' é o PID do processo principal do container.
-    # 2. '15' é o código do sinal SIGTERM (Terminação), que é o mais gentil.
-    try:
-        os.kill(1, 15) 
-        print("Sinal SIGTERM enviado para PID 1. O container deve encerrar.")
-    except Exception as e:
-        # Se o kill falhar, o que é raro, saímos de qualquer forma
-        print(f"Erro ao enviar sinal: {e}. Saindo com sys.exit(1) como fallback.")
-        sys.exit(1)
-
+    # Parando o Script
+    sys.exit(1)
     #os.execv(sys.executable, ['python'] + sys.argv)
 
 def ler_ultimo_codigo(nome_arquivo):
