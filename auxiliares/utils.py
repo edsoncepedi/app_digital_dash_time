@@ -164,8 +164,11 @@ def reiniciar_sistema(debug=False):
         except Exception as e:
             print(f"Erro ao remover {arquivo}: {e}")
 
-    # Reiniciando o Script
-    os.execv(sys.executable, ['python'] + sys.argv)
+    reiniciar_produtos()
+
+    # Parando o Script
+    sys.exit(1)
+    #os.execv(sys.executable, ['python'] + sys.argv)
 
 def ler_ultimo_codigo(nome_arquivo):
     """
