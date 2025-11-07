@@ -58,47 +58,34 @@
       </div>
     </div>
 
+    <div id="popup-aviso" style="
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 35px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            z-index: 10000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            max-width: 80%;
+            text-align: center;
+        "></div>
+
     <div style="text-align:center">
         <img src="../static/img/positivo.jpg" width="400" height="341"/>
     </div>
     <h1 style="text-align:center;">Painel de Controle</h1>
-
-    <!-- Formulário com os tempos -->
-    <!--
-    <form id="form-start">
-        <h2 style="text-align:center;">Configuração de Tempos</h2>
-        <div class="linha-campos">
-            <div class="campo">
-                <label for="tempoBIOS">Tempo Bios</label>
-                <input type="number" id="tempoBIOS" name="tempoBIOS" min="0" required>
-            </div>
-            <div class="campo">
-                <label for="tempoRUNIN">Tempo Runin</label>
-                <input type="number" id="tempoRUNIN" name="tempoRUNIN" min="0" required>
-            </div>
-            <div class="campo">
-                <label for="tempoRETRABALHO">Tempo Download Final</label>
-                <input type="number" id="tempoRETRABALHO" name="tempoRETRABALHO" min="0" required>
-            </div>
-            <div class="campo">
-                <label for="tempoTESTE">Tempo Teste</label>
-                <input type="number" id="tempoTESTE" name="tempoTESTE" min="0" required>
-            </div>
-        </div>
-        <div class="botoes">
-            <button type="submit">▶️ Iniciar Sistema</button>
-            <button type="button" onclick="enviarComando('Restart')">🔁 Reiniciar Sistema</button>
-            <button type="button" onclick="enviarComando('Restart_Produtos')">🔁 Reiniciar Produtos</button>
-        </div>
-    </form>
-    -->
 
     <div class="botoes">
         <button type="button" onclick="enviarComando('Start')">▶️ Iniciar Sistema</button>
         <button type="button" onclick="enviarComando('Restart')">🔁 Reiniciar Sistema</button>
         <button type="button" onclick="enviarComando('Restart_Produtos')">🔁 Reiniciar Produtos</button>
     </div>
-
+    
     <!-- Áreas de status -->
     <div id="status" style="text-align:center;">Status: aguardando envio...</div>
 
@@ -273,6 +260,20 @@
             return true; // ok pra enviar
         }
 
+        function mostrarPopup(mensagem, cor = '#333', duracao_ms = 3000) {
+            const popup = document.getElementById('popup-aviso');
+            popup.textContent = mensagem;
+            popup.style.backgroundColor = cor;
+            popup.style.display = 'block';
+
+            setTimeout(() => {
+                popup.style.display = 'none';
+            }, duracao_ms);
+        }
+
+        socket.on('aviso_controle', data => {
+            mostrarPopup(data.mensagem, data.cor, data.tempo);
+        });
     </script>
 </body>
 </html>

@@ -92,7 +92,9 @@ def configurar_rotas(app, mqttc, socketio):
             # 2) Verifica se algum funcionário foi selecionado em mais de um posto
             if len(selecionados) != len(set(selecionados)):
                 session.close()
-                flash("Não é permitido selecionar o mesmo funcionário para mais de um posto.", "error")
+                #flash("Não é permitido selecionar o mesmo funcionário para mais de um posto.", "error")
+                socketio.emit('aviso_controle', {'mensagem': "Não é permitido selecionar o mesmo funcionário para mais de um posto.", 'cor': "#dc3545", 'tempo': 1000})
+                sleep(1)
                 return redirect(url_for("painel_controle"))
 
             try:
@@ -109,7 +111,7 @@ def configurar_rotas(app, mqttc, socketio):
 
                 # 5) Confirma tudo
                 session.commit()
-                flash("Alocação de operadores atualizada com sucesso!", "success")
+                socketio.emit('aviso_controle', {'mensagem': "Alocação de operadores atualizada com sucesso!", 'cor': "#00a80e", 'tempo': 1000})
 
             except Exception as e:
                 session.rollback()
