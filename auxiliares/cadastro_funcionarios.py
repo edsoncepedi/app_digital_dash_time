@@ -7,16 +7,14 @@ from datetime import datetime
 from threading import Event
 
 evento_resposta = Event()
-
 debug_mode=True
+Funcionario = inicializa_funcionario()
+db = Conectar_DB('funcionarios')  # deve retornar o engine
+SessionLocal = sessionmaker(bind=db)
 
 def rotas_funcionarios(app, mqttc, socketio):
     @app.route('/cadastro_funcionario', methods=['GET', 'POST'])
     def cadastro_funcionario():
-        Funcionario = inicializa_funcionario()
-        db = Conectar_DB('funcionarios')  # deve retornar o engine
-        SessionLocal = sessionmaker(bind=db)
-
         if request.method == 'POST':
             nome = request.form['nome']
             data_nascimento = datetime.strptime(
@@ -78,11 +76,7 @@ def rotas_funcionarios(app, mqttc, socketio):
 
     @app.route('/deletar_funcionario/<int:func_id>', methods=['POST'])
     def deletar_funcionario(func_id):
-        Funcionario = inicializa_funcionario()
-        db = Conectar_DB('funcionarios')
-        SessionLocal = sessionmaker(bind=db)
         session = SessionLocal()
-
         try:
             funcionario = session.query(Funcionario).get(func_id)
             if funcionario:
@@ -98,3 +92,48 @@ def rotas_funcionarios(app, mqttc, socketio):
             session.close()
 
         return redirect(url_for('cadastro_funcionario'))
+
+    @app.route('/rfid__checkin_posto', methods=['POST'])
+    def rfid_event():
+        # 1) Pegar JSON da requisição
+        data = request.get_json(silent=True) or {}
+        tag = data.get('tag')
+        posto = data.get('posto')
+
+        if not tag:
+            return jsonify({"status": "error", "message": "Campo 'tag' é obrigatório."}), 400
+        session = SessionLocal()
+
+        try:
+            # 3) Buscar funcionário pela tag
+            func = session.query(Funcionario).filter_by(rfid_tag=tag).first()
+
+            if func is None:
+                # 🔴 Decisão: tag não encontrada
+                # aqui você pode negar acesso, mandar MQTT com "acesso negado", etc.
+                resposta = {
+                    "status": "unknown_tag",
+                    "posto": posto,
+                    "message": f"Tag {tag} não cadastrada.",
+                    "autorizado": False
+                }
+            else:
+                # 🟢 Decisão: tag encontrada
+                # aqui você pode liberar acesso, mandar MQTT com "abrir porta", etc.
+                resposta = {
+                    "status": "ok",
+                    "message": "Acesso autorizado.",
+                    "posto": posto,
+                    "autorizado": True,
+                    "funcionario": {
+                        "id": func.id,
+                        "nome": func.nome,
+                        "rfid_tag": func.rfid_tag,
+                        "horas_trabalho": float(func.horas_trabalho)
+                    }
+                }
+
+            return jsonify(resposta), 200
+
+        finally:
+            session.close()
