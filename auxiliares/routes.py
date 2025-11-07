@@ -76,33 +76,41 @@ def configurar_rotas(app, mqttc, socketio):
         if request.method == "POST":
             postos = session.query(Posto).order_by(Posto.id).all()
 
-            # 1) coleta todas as seleções de funcionários
+            # 1) Monta um mapa posto_id -> funcionario_id (do formulário)
+            selecoes = {}
             selecionados = []
+
             for posto in postos:
                 campo_name = f"posto_{posto.id}"
                 func_id_str = request.form.get(campo_name)
-                if func_id_str:
-                    selecionados.append(int(func_id_str))
 
-            # 2) verifica se há IDs repetidos
+                if func_id_str:
+                    func_id = int(func_id_str)
+                    selecoes[posto.id] = func_id
+                    selecionados.append(func_id)
+
+            # 2) Verifica se algum funcionário foi selecionado em mais de um posto
             if len(selecionados) != len(set(selecionados)):
                 session.close()
                 flash("Não é permitido selecionar o mesmo funcionário para mais de um posto.", "error")
                 return redirect(url_for("painel_controle"))
 
-            # 3) se passou na validação, aplica as alterações
             try:
+                # 3) Primeiro: limpa todos os funcionarios dos postos
                 for posto in postos:
-                    campo_name = f"posto_{posto.id}"
-                    func_id_str = request.form.get(campo_name)
+                    posto.funcionario_id = None
 
-                    if func_id_str:
-                        posto.funcionario_id = int(func_id_str)
-                    else:
-                        posto.funcionario_id = None
+                session.flush()  # aplica os UPDATEs no banco sem dar commit ainda
 
+                # 4) Agora: aplica a nova alocação com segurança
+                for posto in postos:
+                    if posto.id in selecoes:
+                        posto.funcionario_id = selecoes[posto.id]
+
+                # 5) Confirma tudo
                 session.commit()
                 flash("Alocação de operadores atualizada com sucesso!", "success")
+
             except Exception as e:
                 session.rollback()
                 flash(f"Erro ao atualizar alocação: {e}", "error")
@@ -111,7 +119,7 @@ def configurar_rotas(app, mqttc, socketio):
 
             return redirect(url_for("painel_controle"))
 
-        # GET continua igual
+        # GET → carrega dados normalmente
         funcionarios = session.query(Funcionario).order_by(Funcionario.nome).all()
         postos = session.query(Posto).order_by(Posto.id).all()
         session.close()
