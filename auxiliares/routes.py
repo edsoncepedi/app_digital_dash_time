@@ -12,8 +12,14 @@ from auxiliares.socketio_handlers import tem_cliente_associacao
 from auxiliares.configuracoes import cartao_palete
 evento_resposta = Event()
 import numpy as np
+from auxiliares.associacao import inicializa_funcionario
 
 debug_mode=True
+
+Funcionario, Posto = inicializa_funcionario()
+
+db = Conectar_DB('funcionarios')  # deve retornar o engine
+SessionLocal = sessionmaker(bind=db)
 
 def configurar_rotas(app, mqttc, socketio):
     @app.route("/ping")
@@ -63,9 +69,44 @@ def configurar_rotas(app, mqttc, socketio):
         #evento_resposta.set()
 
     #Rota para o acesso da interface de controle
-    @app.route('/controle')
-    def controle():
-        return render_template('controle.html')
+    @app.route("/controle", methods=["GET", "POST"])
+    def painel_controle():
+        session = SessionLocal()
+
+        if request.method == "POST":
+            # Atualizar os funcionários de cada posto
+            postos = session.query(Posto).order_by(Posto.id).all()
+
+            try:
+                for posto in postos:
+                    campo_name = f"posto_{posto.id}"
+                    func_id_str = request.form.get(campo_name)
+
+                    if func_id_str:
+                        posto.funcionario_id = int(func_id_str)
+                    else:
+                        posto.funcionario_id = None  # nenhum operador atribuído ao posto
+
+                session.commit()
+                flash("Alocação de operadores atualizada com sucesso!", "success")
+            except Exception as e:
+                session.rollback()
+                flash(f"Erro ao atualizar alocação: {e}", "error")
+            finally:
+                session.close()
+
+            return redirect(url_for("painel_controle"))
+
+        # GET → carregar dados para exibir
+        funcionarios = session.query(Funcionario).order_by(Funcionario.nome).all()
+        postos = session.query(Posto).order_by(Posto.id).all()
+        session.close()
+
+        return render_template(
+            "controle.html",
+            funcionarios=funcionarios,
+            postos=postos
+        )
 
     # Função controlada pela interface de controle.
     @app.route('/enviar', methods=['POST'])

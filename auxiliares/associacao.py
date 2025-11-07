@@ -1,11 +1,10 @@
-from sqlalchemy import Column, String, Integer, Date, Numeric 
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import Column, String, Integer, Date, Numeric, ForeignKey
+from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from auxiliares.banco_post import Conectar_DB
-from datetime import date
+from auxiliares.configuracoes import ultimo_posto_bios
 
 def inicializa_Base_assoc():
     db = Conectar_DB('paletes')
-
     Base = declarative_base()
 
     #Criação da tabela de associações, onde está localizado o histórico de todas as associações.
@@ -38,10 +37,31 @@ def inicializa_funcionario():
         horas_trabalho = Column(Numeric(5, 2), default=8.00)
         imagem_path = Column(String(255))
         rfid_tag = Column(String(32), nullable=False, unique=True)
+    
+    class Posto(Base):
+        __tablename__ = "posto"
+
+        id = Column(Integer, primary_key=True)
+        nome = Column(String(50), nullable=False, unique=True)
+        funcionario_id = Column(Integer, ForeignKey("funcionario.id"))
+
+        funcionario = relationship("Funcionario", lazy="joined")
 
     # cria a tabela se não existir (não apaga dados existentes)
     Base.metadata.create_all(bind=engine)
-
     SessionLocal = sessionmaker(bind=engine)
-    
-    return Funcionario
+    session = SessionLocal()
+
+    qtd_postos = ultimo_posto_bios
+
+    try:
+        for i in range(0, qtd_postos + 1):
+            nome = f"posto_{i}"
+            existente = session.query(Posto).filter_by(nome=nome).first()
+            if not existente:
+                session.add(Posto(nome=nome))
+        session.commit()
+    finally:
+        session.close()
+    return Funcionario, Posto
+

@@ -9,7 +9,7 @@
             font-family: Arial, sans-serif;
             margin: 40px;
         }
-        button, input {
+        button, input, select {
             font-size: 1rem;
             margin: 5px;
         }
@@ -40,6 +40,10 @@
         .campo input:disabled {
             background-color: #e9ecef;
         }
+        /* opcional: dá uma largura mínima pros selects */
+        select {
+            min-width: 220px;
+        }
     </style>
 </head>
 <body>
@@ -58,8 +62,9 @@
         <img src="../static/img/positivo.jpg" width="400" height="341"/>
     </div>
     <h1 style="text-align:center;">Painel de Controle</h1>
+
     <!-- Formulário com os tempos -->
-     <!--
+    <!--
     <form id="form-start">
         <h2 style="text-align:center;">Configuração de Tempos</h2>
         <div class="linha-campos">
@@ -85,14 +90,44 @@
             <button type="button" onclick="enviarComando('Restart')">🔁 Reiniciar Sistema</button>
             <button type="button" onclick="enviarComando('Restart_Produtos')">🔁 Reiniciar Produtos</button>
         </div>
-    </form>-->
+    </form>
+    -->
+
     <div class="botoes">
         <button type="button" onclick="enviarComando('Start')">▶️ Iniciar Sistema</button>
         <button type="button" onclick="enviarComando('Restart')">🔁 Reiniciar Sistema</button>
         <button type="button" onclick="enviarComando('Restart_Produtos')">🔁 Reiniciar Produtos</button>
     </div>
+
     <!-- Áreas de status -->
     <div id="status" style="text-align:center;">Status: aguardando envio...</div>
+
+    <!-- NOVO BLOCO: alocação de operadores por posto -->
+    <h2 style="text-align:center; margin-top: 40px;">Alocação de operadores por posto</h2>
+
+    <form method="POST" action="{{ url_for('painel_controle') }}">
+        <div class="linha-campos" style="flex-direction: column; gap: 15px;">
+            {% for posto in postos %}
+            <div class="campo">
+                <label for="posto_{{ posto.id }}">{{ posto.nome }}</label>
+                <select id="posto_{{ posto.id }}" name="posto_{{ posto.id }}">
+                    <option value="">-- Selecionar funcionário --</option>
+                    {% for f in funcionarios %}
+                        <option value="{{ f.id }}"
+                            {% if posto.funcionario_id == f.id %}selected{% endif %}>
+                            {{ f.nome }} ({{ f.rfid_tag }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="botoes">
+            <button type="submit">💾 Salvar alocação</button>
+        </div>
+    </form>
+
     <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
     <script>
         const socket = io();
@@ -139,7 +174,8 @@
             } else {
                 alert('Por favor, preencha todos os campos de tempo antes de iniciar o sistema.');
             }
-        }); */
+        });
+        */
 
         // Envia comandos simples (reiniciar etc.)
         function enviarComando(comando) {
@@ -163,11 +199,11 @@
         socket.on('atualiza_status_producao', data => {
             const elemento = document.getElementById('status-indicador');
             if (data.status === true) {
-            elemento.textContent = 'Ligada 🟢'; // Mostra status positivo com emoji verde
-            elemento.style.color = 'green';        // Muda a cor do texto para verde
+                elemento.textContent = 'Ligada 🟢'; // Mostra status positivo com emoji verde
+                elemento.style.color = 'green';        // Muda a cor do texto para verde
             } else {
-            elemento.textContent = 'Desligada 🔴'; // Mostra status negativo com emoji vermelho
-            elemento.style.color = 'red';             // Muda a cor do texto para vermelho
+                elemento.textContent = 'Desligada 🔴'; // Mostra status negativo com emoji vermelho
+                elemento.style.color = 'red';             // Muda a cor do texto para vermelho
             }
         });
 

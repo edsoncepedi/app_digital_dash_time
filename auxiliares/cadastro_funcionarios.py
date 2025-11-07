@@ -8,7 +8,7 @@ from threading import Event
 
 evento_resposta = Event()
 debug_mode=True
-Funcionario = inicializa_funcionario()
+Funcionario, Posto = inicializa_funcionario()
 db = Conectar_DB('funcionarios')  # deve retornar o engine
 SessionLocal = sessionmaker(bind=db)
 

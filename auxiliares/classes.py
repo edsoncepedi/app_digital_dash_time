@@ -34,12 +34,6 @@ class Produto:
             "hora"
         ])
         
-        #tempoTransporteBiosRunin -> Tempo Bios para Runin
-        #tempoTransporteRuninTeste -> Tempo Runin para Teste
-        #tempoTransporteTesteRetrabalho ->  Teste para Tempo Download Final 
-        #tempoTransporteRetrabalhoEmbalagem -> Tempo Download Final para Embalagem
-
-
     def registrar_passagem(self, tempos: pd.DataFrame):
         """        Adiciona uma linha no DataFrame com os tempos do produto.
         :param produto: instância de Produto
