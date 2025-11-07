@@ -100,7 +100,7 @@ def rotas_funcionarios(app, mqttc, socketio):
         tag = data.get('tag')
         posto = data.get('posto')
 
-        if not tag:
+        if not tag or not posto:
             return jsonify({"status": "error", "message": "Campo 'tag' é obrigatório."}), 400
         session = SessionLocal()
 
