@@ -43,7 +43,7 @@ def inicializa_funcionario():
 
         id = Column(Integer, primary_key=True)
         nome = Column(String(50), nullable=False, unique=True)
-        funcionario_id = Column(Integer, ForeignKey("funcionario.id"))
+        funcionario_id = Column(Integer, ForeignKey("funcionario.id"), unique=True)
 
         funcionario = relationship("Funcionario", lazy="joined")
 

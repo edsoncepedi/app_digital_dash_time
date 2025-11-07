@@ -74,9 +74,23 @@ def configurar_rotas(app, mqttc, socketio):
         session = SessionLocal()
 
         if request.method == "POST":
-            # Atualizar os funcionários de cada posto
             postos = session.query(Posto).order_by(Posto.id).all()
 
+            # 1) coleta todas as seleções de funcionários
+            selecionados = []
+            for posto in postos:
+                campo_name = f"posto_{posto.id}"
+                func_id_str = request.form.get(campo_name)
+                if func_id_str:
+                    selecionados.append(int(func_id_str))
+
+            # 2) verifica se há IDs repetidos
+            if len(selecionados) != len(set(selecionados)):
+                session.close()
+                flash("Não é permitido selecionar o mesmo funcionário para mais de um posto.", "error")
+                return redirect(url_for("painel_controle"))
+
+            # 3) se passou na validação, aplica as alterações
             try:
                 for posto in postos:
                     campo_name = f"posto_{posto.id}"
@@ -85,7 +99,7 @@ def configurar_rotas(app, mqttc, socketio):
                     if func_id_str:
                         posto.funcionario_id = int(func_id_str)
                     else:
-                        posto.funcionario_id = None  # nenhum operador atribuído ao posto
+                        posto.funcionario_id = None
 
                 session.commit()
                 flash("Alocação de operadores atualizada com sucesso!", "success")
@@ -97,7 +111,7 @@ def configurar_rotas(app, mqttc, socketio):
 
             return redirect(url_for("painel_controle"))
 
-        # GET → carregar dados para exibir
+        # GET continua igual
         funcionarios = session.query(Funcionario).order_by(Funcionario.nome).all()
         postos = session.query(Posto).order_by(Posto.id).all()
         session.close()

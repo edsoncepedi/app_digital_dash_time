@@ -253,6 +253,25 @@
         socket.on("connect", () => {
             console.log("Socket.IO reconectado!");
         });
+            
+        function validarAlocacao() {
+            // todos os selects dos postos (id começa com "posto_")
+            const selects = document.querySelectorAll('select[id^="posto_"]');
+            const usados = new Set();
+
+            for (const sel of selects) {
+                const valor = sel.value;
+                if (!valor) continue; // posto sem funcionário atribuído
+
+                if (usados.has(valor)) {
+                    alert("O mesmo funcionário não pode ser atribuído a mais de um posto.");
+                    return false; // cancela o submit
+                }
+                usados.add(valor);
+            }
+
+            return true; // ok pra enviar
+        }
 
     </script>
 </body>
