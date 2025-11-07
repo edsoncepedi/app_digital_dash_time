@@ -10,6 +10,7 @@ from flask_socketio import SocketIO
 
 import auxiliares.classes as classes
 from auxiliares.routes import configurar_rotas
+from auxiliares.cadastro_funcionarios import rotas_funcionarios
 from auxiliares.mqtt_handlers import configurar_mqtt_handlers
 from auxiliares.socketio_handlers import configurar_socketio_handlers
 from auxiliares.associacao import inicializa_Base_assoc
@@ -21,6 +22,11 @@ def create_app():
     # Inicialização do app Flask
     app = Flask(__name__)
     app.url_map.strict_slashes = False
+
+    #Configurações Sistema Funcionário
+    app.config['UPLOAD_FOLDER'] = 'static/funcionarios'
+    app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
+    app.secret_key = 'chave-secreta'
 
     # Configurações do MQTT
     app.config['MQTT_BROKER_URL'] = os.getenv('MQTT_BROKER_URL')
@@ -35,6 +41,7 @@ def create_app():
 
     # Registro de funcionalidades
     configurar_rotas(app, mqtt, socketio)
+    rotas_funcionarios(app, mqtt, socketio)
     configurar_mqtt_handlers(mqtt, socketio)
     configurar_socketio_handlers(socketio)
 

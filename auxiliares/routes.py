@@ -1,19 +1,17 @@
 import pandas as pd
-from flask import render_template, request, jsonify, url_for
+from flask import render_template, request, jsonify, url_for, flash, redirect
 from auxiliares.utils import imprime_qrcode, gera_codigo_produto, verifica_cod_produto, memoriza_produto, reiniciar_produtos, reiniciar_sistema
 from auxiliares.banco_post import verifica_conexao_banco, Conectar_DB, inserir_dados, consulta_paletes
+from auxiliares.associacao import inicializa_funcionario
+from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 from time import sleep
 import auxiliares.classes as classes
-from PIL import Image
 from threading import Event
 from auxiliares.socketio_handlers import tem_cliente_associacao
 from auxiliares.configuracoes import cartao_palete
-
 evento_resposta = Event()
-#import io
 import numpy as np
-#import cv2
 
 debug_mode=True
 
