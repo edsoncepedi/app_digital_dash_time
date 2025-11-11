@@ -12,7 +12,6 @@ from auxiliares.socketio_handlers import tem_cliente_associacao
 from auxiliares.configuracoes import cartao_palete
 evento_resposta = Event()
 import numpy as np
-from auxiliares.associacao import inicializa_funcionario
 
 debug_mode=True
 
@@ -93,7 +92,7 @@ def configurar_rotas(app, mqttc, socketio):
             if len(selecionados) != len(set(selecionados)):
                 session.close()
                 #flash("Não é permitido selecionar o mesmo funcionário para mais de um posto.", "error")
-                socketio.emit('aviso_controle', {'mensagem': "Não é permitido selecionar o mesmo funcionário para mais de um posto.", 'cor': "#dc3545", 'tempo': 1000})
+                socketio.emit('aviso_lista_func', {'mensagem': "Não é permitido selecionar o mesmo funcionário para mais de um posto.", 'cor': "#dc3545", 'tempo': 1000})
                 sleep(1)
                 return redirect(url_for("painel_controle"))
 
@@ -111,7 +110,8 @@ def configurar_rotas(app, mqttc, socketio):
 
                 # 5) Confirma tudo
                 session.commit()
-                socketio.emit('aviso_controle', {'mensagem': "Alocação de operadores atualizada com sucesso!", 'cor': "#00a80e", 'tempo': 1000})
+                socketio.emit('aviso_lista_func', {'mensagem': "Alocação de operadores atualizada com sucesso!", 'cor': "#00a80e", 'tempo': 1000})
+                sleep(1)
 
             except Exception as e:
                 session.rollback()
@@ -140,17 +140,9 @@ def configurar_rotas(app, mqttc, socketio):
 
         #Se for o comando Start
         if dados and dados['tipo'] == 'start':
-            # Processa os dados do start
-            """
-            try:
-                tempoBIOS = int(dados['tempoBIOS'])
-                tempoRUNIN = int(dados['tempoRUNIN'])
-                tempoRETRABALHO = int(dados['tempoRETRABALHO'])
-                tempoTESTE = int(dados['tempoTESTE'])
-            except Exception as e:
-                return jsonify(status='erro', mensagem=f'Erro ao enviar dados: {e}'), 400
-            """
-            #Enviando Tópicos para os dispositivos temporizadores
+            # Inicialização do sistema de Postos
+            classes.inicializar_postos(mqttc)
+            classes.inicia_producao()
             mqttc.publish(f"ControleProducao_DD", f"Start")
 
             #Retorna para a página o sucesso da inicialização do sistema
@@ -213,9 +205,11 @@ def configurar_rotas(app, mqttc, socketio):
                 memoriza_produto(produto)
 
                 classes.associacoes.associa(palete, produto)
-                classes.adicionarProduto(produto)
+                #classes.adicionarProduto(produto)
+
                 #Inicia a contagem do tempo de tranporte no posto 0
-                classes.tratamento_palete(palete, "posto_0", mqttc)
+                #classes.tratamento_palete(palete, "posto_0", mqttc)
+
                 #mqttc.publish(f"rastreio_nfc/esp32/posto_0/dispositivo", "BD")
                 # Coleta a data e hora, do instante quando os dados foram recebidos, para armazenar nas tabelas
                 horario = str(datetime.now().strftime("%d/%m/%Y, %H:%M:%S"))

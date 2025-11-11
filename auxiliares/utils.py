@@ -10,58 +10,6 @@ import sys
 from pyzbar.pyzbar import decode
 from auxiliares.configuracoes import cartao_palete
 
-#Dicionário que organiza as informações de ip e mac dos rastreadores
-informacoes_ips = {'ip':{},'mac':{}}
-
-#Logica para a inicialização do dataframe ips. Se já existe le o atual, se não cria um vazio para ser preenchido
-if os.path.exists('dataframe_ips.csv'):
-    dataframe_ips = pd.read_csv('dataframe_ips.csv')
-else:
-    dataframe_ips = pd.DataFrame()
-
-#Função que preenche o dataframe ip
-def construir_dataframe(informacoes_ips):
-    # Obter a lista de todos os dispositivos (chaves dos dois dicionários)
-    dispositivos = set(informacoes_ips['ip'].keys()) | set(informacoes_ips['mac'].keys())
-
-    # Construir lista de dicionários com os dados
-    dados = []
-    for dispositivo in dispositivos:
-        dados.append({
-            'dispositivo': dispositivo,
-            'ip': informacoes_ips['ip'].get(dispositivo, None),
-            'mac': informacoes_ips['mac'].get(dispositivo, None)
-        })
-
-    # Criar DataFrame
-    df = pd.DataFrame(dados)
-    return df
-
-#Função que trata as mensagens dos rastreadores
-def trata_ips(message):
-    global dataframe_ips
-    global informacoes_ips
-    topic = message.topic
-    payload = message.payload.decode()
-    partes = topic.lower().split("/")
-
-    if partes[0] == 'rastreio' and len(partes) == 4:
-        dispositivo = partes[2]
-        if partes[3] == 'ip':
-            informacoes_ips['ip'][dispositivo] = payload
-        elif partes[3] == 'mac':
-            informacoes_ips['mac'][dispositivo] = payload
-
-    for i in range(1, ultimo_posto_bios+1):
-        try:
-            a = informacoes_ips['ip'][f'posto_{i}']
-            b = informacoes_ips['mac'][f'posto_{i}']
-        except:
-            return
-
-    dataframe_ips = construir_dataframe(informacoes_ips)
-    informacoes_ips = {'ip':{},'mac':{}}
-    dataframe_ips.to_csv('dataframe_ips.csv', index=False)
 
 
 #Essa função é global, sem superpoderes, que serve para separar o nome e o numero de uma string. Utilizada para ler RUNIN2. Entrega runnin, 2.

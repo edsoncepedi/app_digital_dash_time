@@ -271,7 +271,7 @@
             }, duracao_ms);
         }
 
-        socket.on('aviso_controle', data => {
+        socket.on('aviso_lista_func', data => {
             mostrarPopup(data.mensagem, data.cor, data.tempo);
         });
     </script>

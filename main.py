@@ -8,7 +8,6 @@ from flask import Flask
 from flask_mqtt import Mqtt
 from flask_socketio import SocketIO
 
-import auxiliares.classes as classes
 from auxiliares.routes import configurar_rotas
 from auxiliares.cadastro_funcionarios import rotas_funcionarios
 from auxiliares.mqtt_handlers import configurar_mqtt_handlers
@@ -49,9 +48,6 @@ def create_app():
     # ───────────────────────────────────────────────
     # Inicialização do sistema de Associação
     inicializa_Base_assoc()
-
-    # Inicialização do sistema de Postos
-    classes.inicializar_postos()
 
     return app, socketio
 
