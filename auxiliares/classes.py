@@ -16,6 +16,7 @@ def inicia_producao():
         producao = True
 
 def verifica_estado_producao():
+    global producao
     return producao
 
 def inicializar_postos(mqttc):
