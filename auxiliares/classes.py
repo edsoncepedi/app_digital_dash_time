@@ -11,6 +11,7 @@ producao = False
 postos = {}
 
 def inicia_producao():
+    global producao
     if not producao:
         producao = True
 

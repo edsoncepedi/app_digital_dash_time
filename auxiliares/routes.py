@@ -154,6 +154,8 @@ def configurar_rotas(app, mqttc, socketio):
             # Lógica para tratar comandos diferentes
             if comando == 'Start':
                 #Enviando Tópicos para os dispositivos temporizadores
+                classes.inicializar_postos(mqttc)
+                classes.inicia_producao()
                 mqttc.publish(f"ControleProducao_DD", f"Start")
                 #Retorna para a página o sucesso da inicialização do sistema
                 return jsonify(status='sucesso', mensagem='O Sistema foi inciado: Produção ON'), 200
