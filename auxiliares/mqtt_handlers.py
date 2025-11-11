@@ -1,4 +1,4 @@
-from auxiliares.classes import trata_mensagem_DD, inicia_sistema_rastreador
+from auxiliares.classes import trata_mensagem_DD
 from auxiliares.front_assoc import front_mqtt_assoc
 
 def configurar_mqtt_handlers(mqtt, socketio):
