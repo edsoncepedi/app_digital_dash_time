@@ -80,27 +80,3 @@ def consulta_paletes():
         return lista_paletes
     else:
         return 'Erro'
-
-def atualizar_tempo_transporte(codigo_produto, novo_valor, tabela, DB_NAME="temporizador"):
-    def worker2():
-        try:
-            engine = Conectar_DB(DB_NAME)
-            if not verifica_conexao_banco(engine):
-                print("[ERRO] Banco de dados indisponível.")
-                return False
-
-            with engine.connect() as conn:
-                sql = text(f"""
-                    UPDATE {tabela}
-                    SET tempo_transporte = :novo_valor
-                    WHERE codigo_produto = :codigo
-                """)
-                conn.execute(sql, {"novo_valor": novo_valor, "codigo": codigo_produto})
-                conn.commit()
-                print(f"[DB] tempo_transporte do produto {codigo_produto} atualizado para {novo_valor}")
-                return True
-
-        except Exception as e:
-            print(f"[ERRO] Falha ao atualizar tempo_transporte: {e}")
-            return False
-    threading.Thread(target=worker2).start()

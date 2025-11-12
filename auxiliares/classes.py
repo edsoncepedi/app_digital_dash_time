@@ -1,176 +1,300 @@
-import pandas as pd
+from __future__ import annotations
+
 import os
-from datetime import datetime
+import logging
 import time
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, Optional, List
+
+import pandas as pd
+
 from auxiliares.configuracoes import ultimo_posto_bios, cartao_palete
 from auxiliares.utils import verifica_palete_nfc, verifica_cod_produto
+from auxiliares.banco_post import inserir_dados  # noqa: F401  # mantido para uso futuro
+
+from enum import Enum
+from dataclasses import dataclass
+from typing import Optional
 
 
+class PostoState(Enum):
+    IDLE = 0
+    BS = 1
+    BT1 = 2
+    BT2 = 3
+    BD = 4
+
+
+@dataclass
+class PostoSnapshot:
+    id: str
+    state: PostoState
+    produto: Optional[str]
+    palete: Optional[str]
+    arrival: float | None
+    t_preparo: float | None
+    t_montagem: float | None
+    t_espera: float | None
+    t_transf: float | None
+    t_ciclo: float | None
+    last_update_ts: float
+
+# -----------------------------------------------------------------------------
+# LOGGING
+# -----------------------------------------------------------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="[%(levelname)s] %(asctime)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
+# -----------------------------------------------------------------------------
+# ESTADO GLOBAL
+# -----------------------------------------------------------------------------
 hora_inicio = time.perf_counter()
-producao = False
-postos = {}
+producao: bool = False
+postos: Dict[str, "Posto"] = {}
 
-def inicia_producao():
+# Pasta padrão para CSV/XLSX
+DATA_DIR = Path(".")
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+# Colunas padrão dos DataFrames
+COLS_ASSOC = ["produto", "palete", "horario"]
+COLS_POSTO = [
+    "produto",
+    "arrival_time",
+    "tempo_preparo",
+    "tempo_montagem",
+    "tempo_espera",
+    "tempo_transferencia",
+    "tempo_ciclo",
+    "hora",
+]
+
+# -----------------------------------------------------------------------------
+# FUNÇÕES DE CONTROLE DE PRODUÇÃO
+# -----------------------------------------------------------------------------
+
+def inicia_producao() -> None:
     global producao
+    global postos
     if not producao:
         producao = True
+        for i in range(ultimo_posto_bios + 1):
+            nome = f"posto_{i}"
+            postos[nome].inicia_prod_tempo()
 
-def verifica_estado_producao():
+        logger.info("Produção INICIADA.")
+
+
+def encerra_producao() -> None:
     global producao
+    if producao:
+        producao = False
+        logger.info("Produção ENCERRADA.")
+
+
+def verifica_estado_producao() -> bool:
     return producao
 
-def inicializar_postos(mqttc):
-    global postos  # apenas declarar o uso da variável global
-    for i in range(ultimo_posto_bios+1):
-        postos[f"posto_{i}"] = Posto(f"posto_{i}", mqttc)
-    print("[INFO] Postos inicializados:")
-    for nome in postos.keys():
-        print(f"    - {nome}")
 
+# -----------------------------------------------------------------------------
+# INICIALIZAÇÃO DOS POSTOS
+# -----------------------------------------------------------------------------
+
+def inicializar_postos(mqttc) -> None:
+    global postos
+    for i in range(ultimo_posto_bios + 1):
+        nome = f"posto_{i}"
+        postos[nome] = Posto(nome, mqttc)
+    logger.info("Postos inicializados: %s", ", ".join(postos.keys()))
+
+
+# -----------------------------------------------------------------------------
+# TABELA DE ASSOCIAÇÃO PRODUTO↔PALETE
+# -----------------------------------------------------------------------------
 class Tabela_Assoc:
-    def __init__(self, entrada):
+    def __init__(self, entrada: str):
         self.nome = entrada.lower()
-        self.csvPath = f"{self.nome}.csv"
+        self.csvPath = DATA_DIR / f"{self.nome}.csv"
+        self.histPath = DATA_DIR / f"historico_{self.nome}.csv"
         self.df_assoc = self.carregarDados()
 
-    def carregarDados(self):
-        if os.path.exists(self.csvPath):
-            print(f"[{self.nome}] Carregando dados Locais.")
-            return pd.read_csv(self.csvPath)
+    def carregarDados(self) -> pd.DataFrame:
+        if self.csvPath.exists():
+            logger.info("[%s] Carregando dados locais de associações.", self.nome)
+            try:
+                df = pd.read_csv(self.csvPath)
+            except Exception as e:
+                logger.error("[%s] Erro ao ler %s: %s", self.nome, self.csvPath, e)
+                df = pd.DataFrame(columns=COLS_ASSOC)
         else:
-            print(f"[{self.nome}] Dados Locais n encontrados.")
-            return pd.DataFrame(columns=[
-                "produto",
-                "palete",
-                "horario"
-            ])
+            logger.warning("[%s] Dados locais não encontrados (iniciando vazio).", self.nome)
+            df = pd.DataFrame(columns=COLS_ASSOC)
+        # garante colunas e tipos básicos
+        for col in COLS_ASSOC:
+            if col not in df.columns:
+                df[col] = pd.Series(dtype="object")
+        return df
 
-    def salvarDadosLocais(self):
-        self.df_assoc.to_csv(self.csvPath, index=False)
-        print(f"[{self.nome}] Dados salvos com sucesso.")
+    def salvarDadosLocais(self) -> None:
+        try:
+            self.df_assoc.to_csv(self.csvPath, index=False)
+            logger.info("[%s] Dados de associações salvos.", self.nome)
+        except Exception as e:
+            logger.error("[%s] Falha ao salvar %s: %s", self.nome, self.csvPath, e)
 
-    def paletes_assoc(self):
-        return self.df_assoc['palete'].tolist()
+    def paletes_assoc(self) -> List[str]:
+        if "palete" not in self.df_assoc:
+            return []
+        return [p for p in self.df_assoc["palete"].dropna().astype(str).tolist()]
 
-    def associa(self, palete, produto):
-        horario = str(datetime.now().strftime("%d/%m/%Y, %H:%M:%S"))
-        dado = pd.DataFrame([{
-            'palete': palete,
-            'produto': produto,
-            'horario': horario
-        }])
-        dado.to_csv(f"historico_{self.csvPath}", index=False, mode='a', header=False)
+    def associa(self, palete: str, produto: str) -> None:
+        horario = datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
+        dado = pd.DataFrame([
+            {"palete": palete, "produto": produto, "horario": horario}
+        ])
+
+        # apêndice no histórico (com cabeçalho somente se o arquivo ainda não existir)
+        try:
+            header = not self.histPath.exists()
+            dado.to_csv(self.histPath, index=False, mode="a", header=header)
+        except Exception as e:
+            logger.error("[%s] Erro ao escrever histórico %s: %s", self.nome, self.histPath, e)
+
         self.df_assoc = pd.concat([self.df_assoc, dado], ignore_index=True)
         self.salvarDadosLocais()
 
-    def desassocia(self, produto):
-        self.df_assoc = self.df_assoc[self.df_assoc['produto'] != produto]
-        self.df_assoc = self.df_assoc.reset_index(drop=True)
+    def desassocia(self, produto: str) -> None:
+        if "produto" not in self.df_assoc:
+            return
+        self.df_assoc = self.df_assoc[self.df_assoc["produto"] != produto].reset_index(drop=True)
         self.salvarDadosLocais()
 
-    def palete_produto(self, palete):
-        paletes = self.paletes_assoc()
-        if palete in paletes:
-            resultado = self.df_assoc[self.df_assoc['palete'] == palete]
-            produto = resultado['produto'].values[0]
-            return produto
-        else:
-            return 'Erro'
+    def palete_produto(self, palete: str) -> Optional[str]:
+        if self.df_assoc.empty:
+            return None
+        resultado = self.df_assoc[self.df_assoc["palete"] == palete]
+        if resultado.empty:
+            return None
+        # retorna o ÚLTIMO produto associado ao palete
+        try:
+            return resultado.tail(1)["produto"].astype(str).iloc[0]
+        except Exception:
+            return None
 
-associacoes = Tabela_Assoc('associacoes')
 
+associacoes = Tabela_Assoc("associacoes")
+
+
+# -----------------------------------------------------------------------------
+# CLASSE POSTO
+# -----------------------------------------------------------------------------
 class Posto:
-    def __init__ (self, posto, mqttc):
+    def __init__(self, posto: str, mqttc) -> None:
         self.id_posto = posto
         self.n_posto = int(posto.split("_")[1])
-        if self.n_posto > 0:
-            self.posto_anterior = f"posto_{self.n_posto - 1}"
-        if self.n_posto < ultimo_posto_bios:
-            self.posto_posterior = f"posto_{self.n_posto + 1}"
+        self.posto_anterior: Optional[str] = f"posto_{self.n_posto - 1}" if self.n_posto > 0 else None
+        self.posto_posterior: Optional[str] = (
+            f"posto_{self.n_posto + 1}" if self.n_posto < ultimo_posto_bios else None
+        )
+
         self.nome = posto.upper()
-        self.csvPath = f"{self.nome}.csv"
-        self.XlsPath = f"{self.nome}.xlsx"
+        self.csvPath = DATA_DIR / f"{self.nome}.csv"
+        self.XlsPath = DATA_DIR / f"{self.nome}.xlsx"
+
         self.df_historico = self.carregarDados()
-        self.produto_atual = None
-        self.palete_atual = None
+        self.produto_atual: Optional[str] = None
+        self.palete_atual: Optional[str] = None
+
         self.maquina_estado = 0
         self.maquina_estado_anterior = 0
-        self.timestamp = {"BS": None, "BT1": None, "BT2": None, "BD": time.perf_counter()}
-        self.BS_posterior = None
-        self.BD_backup = None
-        self.mqttc = mqttc
+        self.timestamp = {"BS": None, "BT1": None, "BT2": None, "BD": None}
+        self.BS_posterior: Optional[float] = None
+        self.BD_backup: Optional[float] = None
 
-    # === Cria nova linha para o produto ===
-    def inicia_montagem(self, arrival):
+        self.mqttc = mqttc
+        self.on_change = None # callback opcional
+        self._last_update = time.time()
+
+    # ------------------------------------------------------------------
+    # Registro de linha (início de montagem)
+    # ------------------------------------------------------------------
+    def inicia_prod_tempo(self):
+        self.timestamp['BD'] = time.perf_counter()
+
+    def inicia_montagem(self, arrival: float) -> None:
         nova_linha = {
             "produto": None,
-            "arrival_time": arrival,
+            "arrival_time": float(arrival),
             "tempo_preparo": None,
             "tempo_montagem": None,
             "tempo_espera": None,
             "tempo_transferencia": None,
             "tempo_ciclo": None,
-            "hora": str(datetime.now().strftime("%d/%m/%Y, %H:%M:%S"))
+            "hora": datetime.now().strftime("%d/%m/%Y, %H:%M:%S"),
         }
-
         self.df_historico = pd.concat([self.df_historico, pd.DataFrame([nova_linha])], ignore_index=True)
         self.salvarDadosLocais()
-    
-    def atualizar_tempo(self, produto, tipo_tempo, valor):
-        if produto != None:
-            if produto not in self.df_historico["produto"].values:
-                print(f"[{self.nome}] Produto {produto} não encontrado, criando nova linha.")
-                self.atualiza_produto(produto)
 
-            self.df_historico.loc[self.df_historico["produto"] == produto, tipo_tempo] = valor
+    def atualizar_tempo(self, produto: Optional[str], tipo_tempo: str, valor: float) -> None:
+        valor = float(valor)
+        if produto is not None:
+            if produto not in self.df_historico["produto"].astype(str).values:
+                logger.info("[%s] Produto %s não encontrado, associando à última linha.", self.nome, produto)
+                self.atualiza_produto(produto)
+            self.df_historico.loc[self.df_historico["produto"].astype(str) == str(produto), tipo_tempo] = round(valor, 2)
             self.salvarDadosLocais()
-            print(f"[{self.nome}] {tipo_tempo} do produto {produto} atualizado ({valor:.2f}s)")
+            logger.info("[%s] %s do produto %s atualizado (%.2fs)", self.nome, tipo_tempo, produto, valor)
         else:
             if len(self.df_historico) == 0:
-                print(f"[{self.nome}] Nenhum registro ativo para atualizar.")
+                logger.warning("[%s] Nenhum registro ativo para atualizar.", self.nome)
                 return
             idx = self.df_historico.index[-1]
-            self.df_historico.at[idx, tipo_tempo] = valor
+            self.df_historico.at[idx, tipo_tempo] = round(valor, 2)
             self.salvarDadosLocais()
-            print(f"[{self.nome}] {tipo_tempo} atualizado com {valor:.2f}s.")
+            logger.info("[%s] %s atualizado (%.2fs).", self.nome, tipo_tempo, valor)
 
-    def atualiza_produto(self, produto):
+    def atualiza_produto(self, produto: str) -> None:
         if len(self.df_historico) == 0:
-            print(f"[{self.nome}] Nenhuma linha para associar produto.")
+            logger.warning("[%s] Nenhuma linha para associar produto.", self.nome)
             return
-
-        # pega o último índice (último BS registrado)
         idx = self.df_historico.index[-1]
-        self.df_historico.at[idx, "produto"] = produto
+        self.df_historico.at[idx, "produto"] = str(produto)
         self.salvarDadosLocais()
-        print(f"[{self.nome}] Produto {produto} associado à última entrada (linha {idx}).")
+        logger.info("[%s] Produto %s associado à linha %d.", self.nome, produto, idx)
 
-    def calcula_transporte(self):
+    # ------------------------------------------------------------------
+    # Cálculos de tempos
+    # ------------------------------------------------------------------
+    def calcula_transporte(self) -> None:
         if self.n_posto < ultimo_posto_bios:
-            self.BS_posterior = time.perf_counter() 
-            transporte = self.BS_posterior - self.BD_backup
-            transporte = round(transporte, 2)
+            if self.BD_backup is None:
+                logger.debug("[%s] Sem BD_backup anterior; transporte não calculado.", self.nome)
+                return
+            self.BS_posterior = time.perf_counter()
+            transporte = round(self.BS_posterior - self.BD_backup, 2)
             self.atualizar_tempo(self.produto_atual, "tempo_transferencia", transporte)
+            self._notify()
         elif self.n_posto == ultimo_posto_bios:
-            transporte = 0
-            self.atualizar_tempo(self.produto_atual, "tempo_transferencia", transporte)
+            self.atualizar_tempo(self.produto_atual, "tempo_transferencia", 0.0)
+            self._notify()
         else:
-            print(f'[{self.nome}] - Posto inválido para transporte.')
-        
-        tempo_ciclo = self.calcular_tempo_ciclo()
-        self.atualizar_tempo(self.produto_atual, "tempo_ciclo", tempo_ciclo)
-        return
-
-    def calcular_tempo_ciclo(self, idx=None):
-        """
-        Calcula o tempo de ciclo como a soma dos tempos individuais.
-        Se idx for None, calcula para a última linha registrada.
-        """
-        if self.df_historico.empty:
-            print(f"[{self.nome}] Nenhum dado disponível para cálculo.")
+            logger.error("[%s] Posto inválido para transporte.", self.nome)
             return
 
-        # define o índice da linha a atualizar
+        tempo_ciclo = self.calcular_tempo_ciclo()
+        if tempo_ciclo is not None:
+            self.atualizar_tempo(self.produto_atual, "tempo_ciclo", tempo_ciclo)
+            self._notify()
+
+    def calcular_tempo_ciclo(self, idx: Optional[int] = None) -> Optional[float]:
+        if self.df_historico.empty:
+            logger.warning("[%s] Nenhum dado disponível para cálculo.", self.nome)
+            return None
         if idx is None:
             idx = self.df_historico.index[-1]
 
@@ -179,142 +303,220 @@ class Posto:
             "tempo_preparo",
             "tempo_montagem",
             "tempo_espera",
-            "tempo_transferencia"
+            "tempo_transferencia",
         ]
 
-        # obtém valores válidos (float) ignorando NaN
-        valores = [
-            float(self.df_historico.at[idx, c])
-            for c in campos_tempos
-            if pd.notna(self.df_historico.at[idx, c])
-        ]
+        valores: List[float] = []
+        for c in campos_tempos:
+            v = self.df_historico.at[idx, c]
+            if pd.notna(v):
+                try:
+                    valores.append(float(v))
+                except Exception:
+                    logger.debug("[%s] Valor não numérico em %s (linha %d): %r", self.nome, c, idx, v)
 
         if not valores:
-            print(f"[{self.nome}] Nenhum tempo válido para somar (linha {idx}).")
-            return
+            logger.info("[%s] Nenhum tempo válido para somar (linha %d).", self.nome, idx)
+            return None
 
-        tempo_ciclo = sum(valores)
-        print(f"[{self.nome}] Tempo de ciclo atualizado: {tempo_ciclo:.2f}s.")
+        tempo_ciclo = round(sum(valores), 2)
         return tempo_ciclo
 
-    def tratamento_dispositivo(self, payload):
-        if payload in self.timestamp.keys():
+    # ------------------------------------------------------------------
+    # Tratamento de mensagens do dispositivo
+    # ------------------------------------------------------------------
+    def tratamento_dispositivo(self, payload: str) -> None:
+        if payload in self.timestamp:
             self.timestamp[payload] = time.perf_counter()
 
-            if payload == 'BS':
-                if self.n_posto > 0:
-                    print(f"chamando transporte BS - {self.posto_anterior}")
+            if payload == "BS":
+                if self.posto_anterior is not None:
+                    logger.debug("Chamando transporte do %s → %s", self.posto_anterior, self.id_posto)
                     postos[self.posto_anterior].calcula_transporte()
                 if self.maquina_estado == 0:
-                    print(f'[{self.nome}] - ESTADO 1 - BS')
-                    arrival = self.timestamp['BS'] - self.timestamp['BD']
-                    arrival = round(arrival, 2) 
+                    logger.info("[%s] - ESTADO 1 - BS", self.nome)
+                    arrival = round(self.timestamp["BS"] - self.timestamp["BD"], 2)
                     self.inicia_montagem(arrival)
-
                     self.maquina_estado_anterior = self.maquina_estado
                     self.maquina_estado = 1
+                    self._notify()
                 return
 
-            if payload == 'BT1':
-                if self.maquina_estado == 1:
-                    print(f'[{self.nome}] - ESTADO 2 - BT1')
-                    preparo = self.timestamp['BT1'] - self.timestamp['BS']
-                    preparo = round(preparo, 2)                     
-                    self.atualizar_tempo(self.produto_atual, "tempo_preparo", preparo)
-
-                    self.maquina_estado_anterior = self.maquina_estado
-                    self.maquina_estado = 2
+            if payload == "BT1" and self.maquina_estado == 1:
+                logger.info("[%s] - ESTADO 2 - BT1", self.nome)
+                preparo = round(self.timestamp["BT1"] - self.timestamp["BS"], 2)
+                self.atualizar_tempo(self.produto_atual, "tempo_preparo", preparo)
+                self.maquina_estado_anterior = self.maquina_estado
+                self.maquina_estado = 2
+                self._notify()
                 return
 
-            if payload == 'BT2':
-                if self.maquina_estado == 2:
-                    print(f'[{self.nome}] - ESTADO 3 - BT2')
-                    montagem = self.timestamp['BT2'] - self.timestamp['BT1']
-                    montagem = round(montagem, 2) 
-                    self.atualizar_tempo(self.produto_atual, "tempo_montagem", montagem)
-
-                    self.maquina_estado_anterior = self.maquina_estado
-                    self.maquina_estado = 3
+            if payload == "BT2" and self.maquina_estado == 2:
+                logger.info("[%s] - ESTADO 3 - BT2", self.nome)
+                montagem = round(self.timestamp["BT2"] - self.timestamp["BT1"], 2)
+                self.atualizar_tempo(self.produto_atual, "tempo_montagem", montagem)
+                self.maquina_estado_anterior = self.maquina_estado
+                self.maquina_estado = 3
+                self._notify()
                 return
 
-            if payload == 'BD':
-                if self.maquina_estado == 3:
-                    print(f'[{self.nome}] - ESTADO 4 - BD')
-                    if self.produto_atual == None:
-                        self.produto_atual = associacoes.palete_produto(self.palete_atual)
+            if payload == "BD" and self.maquina_estado == 3:
+                logger.info("[%s] - ESTADO 4 - BD", self.nome)
+                if self.produto_atual is None:
+                    self.produto_atual = associacoes.palete_produto(self.palete_atual)
+                espera = round(self.timestamp["BD"] - self.timestamp["BT2"], 2)
+                self.atualizar_tempo(self.produto_atual, "tempo_espera", espera)
 
-                    espera = self.timestamp['BD'] - self.timestamp['BT2']
-                    espera = round(espera, 2) 
-                    self.atualizar_tempo(self.produto_atual, "tempo_espera", espera)
+                if self.id_posto == "posto_0":
+                    prod = associacoes.palete_produto(self.palete_atual)
+                    if prod is not None:
+                        self.atualiza_produto(prod)
 
-                    if self.id_posto == f"posto_0":
-                        self.atualiza_produto(associacoes.palete_produto(self.palete_atual))
-
-                    if self.id_posto == f"posto_{ultimo_posto_bios}":
-                        self.calcula_transporte()
+                if self.id_posto == f"posto_{ultimo_posto_bios}":
+                    self.calcula_transporte()
+                    if self.produto_atual is not None:
                         associacoes.desassocia(self.produto_atual)
 
-                    self.produto_atual = None
-                    self.palete_atual = None
-                    self.BD_backup = time.perf_counter()
-                    self.maquina_estado = 0
-                    self.maquina_estado_anterior = 3
+                self.produto_atual = None
+                self.palete_atual = None
+                self.BD_backup = time.perf_counter()
+                self.maquina_estado_anterior = 3
+                self.maquina_estado = 0
+                self._notify()
                 return
-        elif verifica_palete_nfc(payload):
-            if self.id_posto == "posto_0":
-                self.palete_atual = cartao_palete[payload]
-            else:
-                self.tratamento_palete(cartao_palete[payload])
 
-    def tratamento_palete(self, palete):
+        # Não é um timestamp: pode ser leitura NFC de palete
+        if verifica_palete_nfc(payload):
+            palete_lido = cartao_palete.get(payload)
+            if palete_lido is None:
+                logger.warning("[%s] Cartão %s não mapeado em cartao_palete.", self.nome, payload)
+                return
+            if self.id_posto == "posto_0":
+                self.palete_atual = palete_lido
+                self._notify()
+            else:
+                self.tratamento_palete(palete_lido)
+                self._notify()
+
+    # ------------------------------------------------------------------
+    # Palete
+    # ------------------------------------------------------------------
+    def tratamento_palete(self, palete: str) -> None:
         produto_lido = associacoes.palete_produto(palete)
-        if verifica_cod_produto(produto_lido):
+        if produto_lido and verifica_cod_produto(produto_lido):
             self.palete_atual = palete
             self.produto_atual = produto_lido
             self.atualiza_produto(self.produto_atual)
         else:
-            print(f"[{self.nome}] - {palete} não foi associado.")
+            logger.warning("[%s] - %s não foi associado a um produto válido.", self.nome, palete)
 
-    def carregarDados(self):
-        if os.path.exists(self.csvPath):
-            print(f"[{self.nome}] Carregando dados Locais.")
-            return pd.read_csv(self.csvPath)
+    # ------------------------------------------------------------------
+    # Persistência
+    # ------------------------------------------------------------------
+    def carregarDados(self) -> pd.DataFrame:
+        if self.csvPath.exists():
+            logger.info("[%s] Carregando dados locais do posto.", self.nome)
+            try:
+                df = pd.read_csv(self.csvPath)
+            except Exception as e:
+                logger.error("[%s] Erro ao ler %s: %s", self.nome, self.csvPath, e)
+                df = pd.DataFrame(columns=COLS_POSTO)
         else:
-            print(f"[{self.nome}] Dados Locais n encontrados.")
-            return pd.DataFrame(columns=[
-            "produto",
-            "arrival_time",
-            "tempo_preparo",
-            "tempo_montagem",
-            "tempo_espera",
-            "tempo_transferencia",
-            "tempo_ciclo",
-            "hora"
-        ])
+            logger.warning("[%s] Dados locais não encontrados (iniciando vazio).", self.nome)
+            df = pd.DataFrame(columns=COLS_POSTO)
 
-    def salvarDadosLocais(self):
-        self.df_historico.to_csv(self.csvPath, index=False)
-        self.df_historico.to_excel(self.XlsPath, index=False)
-        #print(f"[{self.nome}] Dados salvos com sucesso.")
+        # garante colunas
+        for col in COLS_POSTO:
+            if col not in df.columns:
+                df[col] = pd.Series(dtype="object")
+        return df
 
-def trata_mensagem_DD(message):
-    # Separa a mensagem em topico e payload
-    topic = message.topic
-    payload = message.payload.decode()
-    topicos = topic.split("/")
+    def salvarDadosLocais(self) -> None:
+        try:
+            self.df_historico.to_csv(self.csvPath, index=False)
+            # Opcional: exportar para Excel (custo de IO alto). Descomente se necessário.
+            # self.df_historico.to_excel(self.XlsPath, index=False)
+            logger.debug("[%s] Dados salvos em %s.", self.nome, self.csvPath)
+        except Exception as e:
+            logger.error("[%s] Falha ao salvar %s: %s", self.nome, self.csvPath, e)
+    
+    def _state_enum(self) -> PostoState:
+        mapping = {0: PostoState.IDLE, 1: PostoState.BS, 2: PostoState.BT1, 3: PostoState.BT2}
+        # quando está pronto para BD, state=3; após BD concluído voltamos a 0
+        return mapping.get(self.maquina_estado, PostoState.BD if self.maquina_estado_anterior == 3 else PostoState.IDLE)
 
+
+    def snapshot(self) -> PostoSnapshot:
+        idx = self.df_historico.index[-1] if len(self.df_historico) else None
+        def getv(col):
+            if idx is None or col not in self.df_historico.columns:
+                return None
+            val = self.df_historico.at[idx, col]
+            return float(val) if pd.notna(val) else None
+        return PostoSnapshot(
+            id=self.id_posto,
+            state=self._state_enum(),
+            produto=self.produto_atual,
+            palete=self.palete_atual,
+            arrival=getv("arrival_time"),
+            t_preparo=getv("tempo_preparo"),
+            t_montagem=getv("tempo_montagem"),
+            t_espera=getv("tempo_espera"),
+            t_transf=getv("tempo_transferencia"),
+            t_ciclo=getv("tempo_ciclo"),
+            last_update_ts=time.time()
+        )
+
+
+    def _notify(self):
+        self._last_update = time.time()
+        if callable(self.on_change):
+            try:
+                self.on_change(self.snapshot())
+            except Exception:
+                pass
+    
+    def set_buzzer(self, on: bool):
+        if self.mqttc:
+            self.mqttc.publish(f"linha/{self.id_posto}/buzzer", "ON" if on else "OFF")
+        return
+
+    def set_light(self, color: str):
+        if self.mqttc:
+            self.mqttc.publish(f"linha/{self.id_posto}/light", color.upper())
+        return
+
+# -----------------------------------------------------------------------------
+# MQTT → Roteamento de mensagens para cada Posto
+# -----------------------------------------------------------------------------
+
+def trata_mensagem_DD(message) -> None:
+    try:
+        topic = getattr(message, "topic")
+        payload_bytes = getattr(message, "payload")
+        payload_str = payload_bytes.decode() if isinstance(payload_bytes, (bytes, bytearray)) else str(payload_bytes)
+    except Exception as e:
+        logger.error("Mensagem inválida recebida: %s", e)
+        return
+
+    topicos = topic.split("/") if isinstance(topic, str) else []
     if len(topicos) != 4:
         return
-    else:
-        sistema, embarcado, dispositivo, agente = topicos 
-    
-    n_posto = int(dispositivo.split("_")[1])
+
+    sistema, embarcado, dispositivo, agente = topicos
+
+    try:
+        n_posto = int(dispositivo.split("_")[1])
+    except Exception:
+        return
+
     if n_posto > ultimo_posto_bios:
         return
 
-    if sistema == 'rastreio_nfc' and agente == 'dispositivo' and producao:
-        dispositivo = message.topic.split("/")[2]
-        agente = message.topic.split("/")[3]
-        payload = str(str(message.payload).split("'")[1])
-        if agente == 'dispositivo':
-            postos[dispositivo].tratamento_dispositivo(payload)
+    # Só processa se produção estiver ativa
+    if sistema == "rastreio_nfc" and agente == "dispositivo" and producao:
+        posto = postos.get(dispositivo)
+        if posto is None:
+            logger.warning("Posto %s não inicializado.", dispositivo)
+            return
+        posto.tratamento_dispositivo(payload_str)

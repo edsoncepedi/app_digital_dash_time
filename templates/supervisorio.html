@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Supervisório de Postos</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    :root{
+      --bg:#27292d; --panel:#1f2125; --txt:#fff; --muted:#b5b8c2;
+      --arrival:#ffffff; --arrival-bg:#1070ff;
+      --espera:#eed896; --espera-bg:#eab30822;
+      --preparo:#f59e0b; --preparo-bg:#f59e0b22;
+      --montagem:#22c55e; --montagem-bg:#22c55e22;
+      --accent:#cfe88b;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial}
+    .wrap{max-width:1280px;margin:24px auto;padding:0 12px}
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+    .card{background:var(--panel);border-radius:14px;padding:16px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
+    .title{font-weight:800;letter-spacing:.4px;margin-bottom:8px;color:var(--accent);text-transform:uppercase}
+    .value{font-size:36px;font-weight:800}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:16px}
+    .posto{position:relative;overflow:hidden;border-radius:18px}
+    .head{font-size:26px;font-weight:900;letter-spacing:1px}
+    .tag{position:absolute;top:0;left:0;right:0;height:56px;display:flex;align-items:center;padding:0 16px}
+    .tag.arrival{background:var(--arrival-bg);color:var(--arrival)}
+    .tag.espera{background:var(--espera-bg);color:var(--espera)}
+    .tag.preparo{background:var(--preparo-bg);color:var(--preparo)}
+    .tag.montagem{background:var(--montagem-bg);color:var(--montagem)}
+    .row{display:flex;justify-content:space-between;align-items:center;margin:8px 0;gap:8px}
+    .chip{font-size:12px;padding:6px 10px;border-radius:999px;background:#2f3136;color:var(--txt)}
+    .btn{cursor:pointer;border:none}
+    .btn:active{transform:translateY(1px);opacity:.9}
+    .muted{color:var(--muted)}
+    .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <!-- KPIs topo (exemplo simples; ajuste como quiser) -->
+  <div class="kpis">
+    <div class="card"><div class="title">Order ID</div><div id="kpi-order" class="value">000001</div></div>
+    <div class="card"><div class="title">Tempo de Operação</div><div id="kpi-time" class="value">00:00:00</div></div>
+    <div class="card"><div class="title">Produção Atual</div><div id="kpi-prod" class="value">0/100</div></div>
+    <div class="card"><div class="title">Projeção</div><div id="kpi-proj" class="value">--</div></div>
+  </div>
+
+  <!-- GRID dos postos (cards são injetados via JS) -->
+  <div class="grid" id="grid-postos"></div>
+</div>
+
+<script>
+/* ===================== CONFIG ===================== */
+window.NUM_POSTOS = window.NUM_POSTOS ?? 3;
+
+// Mapeamento DINÂMICO: estado da máquina -> título do card
+// Estados esperados (compatível com sua classe): 0=IDLE, 1=BS, 2=BT1, 3=BT2, 4=BD
+const DEFAULT_STATE_TITLES = {
+  0: "Arrival",   // IDLE - BD
+  1: "Preparo",  // BS
+  2: "Montagem", // BT1
+  3: "Espera" // BT2
+};
+// Se quiser sobrescrever em runtime: window.STATE_TITLES = { ... }
+/* ================================================== */
+
+// Helpers de estado
+const stateIndex = (s) => (s && typeof s==='object' && 'value' in s) ? s.value : s;
+const stateName  = (s) => ['IDLE','BS','BT1','BT2','BD'][stateIndex(s)] || 'IDLE';
+const titleFor   = (s) => (window.STATE_TITLES || DEFAULT_STATE_TITLES)[stateIndex(s)] || 'Arrival';
+const titleClass = (title) => {
+  title = (title || '').toLowerCase();
+  if(title.startsWith('espe'))  return 'espera';
+  if(title.startsWith('mont'))  return 'montagem';
+  if(title.startsWith('prep')) return 'preparo';
+  return 'arrival';
+};
+const fmtSec = (v) => (v==null || Number.isNaN(v)) ? '--' : (typeof v==='number' ? v.toFixed(2)+'s' : v);
+
+// Constrói um card de posto
+function buildCard(n){
+  const el = document.createElement('div');
+  el.className = 'card posto';
+  el.id = `posto_${n}`;
+  const initialTitle = 'Arrival';
+  el.innerHTML = `
+    <div class="tag ${titleClass(initialTitle)}" id="p${n}-tag">
+      <div class="head" id="p${n}-head">${initialTitle}</div>
+    </div>
+    <div style="height:56px"></div>
+
+    <div class="row"><span>Product Code:</span><span id="p${n}-produto" class="chip">--</span></div>
+    <div class="row"><span>Model:</span><span id="p${n}-modelo" class="chip muted">--</span></div>
+    <div class="row"><span>Estado:</span><span id="p${n}-estado" class="chip">IDLE</span></div>
+
+    <div class="toolbar">
+      <button class="chip btn" onclick="cmd(${n}, 'buzzer', {on:true})">Buzzer ON</button>
+      <button class="chip btn" onclick="cmd(${n}, 'buzzer', {on:false})">Buzzer OFF</button>
+      <button class="chip btn" onclick="cmd(${n}, 'light', {color:'green'})">Luz Verde</button>
+      <button class="chip btn" onclick="cmd(${n}, 'light', {color:'red'})">Luz Vermelha</button>
+    </div>
+  `;
+  return el;
+}
+
+// Monta o grid
+const grid = document.getElementById('grid-postos');
+for(let n=0; n<window.NUM_POSTOS; n++){
+  grid.appendChild(buildCard(n));
+}
+
+// Socket.IO
+const socket = io();
+
+// Entra nas salas de cada posto e pede snapshot
+function joinAll(){
+  for(let n=0; n<window.NUM_POSTOS; n++){
+    socket.emit('join_posto', { posto: `posto_${n}` });
+  }
+}
+socket.on('connect', joinAll);
+
+// Atualização de UI a partir de um snapshot/evento
+function updateFromSnapshot(s){
+  if(!s || !s.id) return;
+  const n = s.id.split('_')[1];
+
+  // Título dinâmico (Montagem/Preparo/Espera) a partir do ESTADO
+  const titulo = titleFor(s.state);
+  const head = document.getElementById(`p${n}-head`);
+  const tag  = document.getElementById(`p${n}-tag`);
+  if(head) head.textContent = titulo;
+  if(tag){
+    tag.classList.remove('arrival','montagem','preparo','espera');
+    tag.classList.add(titleClass(titulo));
+  }
+
+  // Campos
+  const setText = (id, txt) => { const el = document.getElementById(id); if(el) el.textContent = txt; };
+
+  setText(`p${n}-produto`, s.produto ?? '--');
+  setText(`p${n}-modelo`,  s.modelo  ?? '—'); // opcional, caso envie do backend
+  setText(`p${n}-estado`,  stateName(s.state));
+}
+
+// Eventos do backend
+socket.on('posto/state_snapshot', updateFromSnapshot);
+socket.on('posto/state_changed', updateFromSnapshot);
+
+// Comandos → backend → Supervisor → Posto → MQTT
+function cmd(n, command, args={}){
+  socket.emit('posto/command', { posto:`posto_${n}`, cmd:command, args });
+}
+window.cmd = cmd; // para testar no console
+
+// KPI: tempo de operação (exemplo)
+let start = Date.now();
+setInterval(()=>{
+  const ms = Date.now()-start;
+  const hh = String(Math.floor(ms/3600000)).padStart(2,'0');
+  const mm = String(Math.floor(ms/60000)%60).padStart(2,'0');
+  const ss = String(Math.floor(ms/1000)%60).padStart(2,'0');
+  document.getElementById('kpi-time').textContent = `${hh}:${mm}:${ss}`;
+},1000);
+</script>
+</body>
+</html>

@@ -13,6 +13,10 @@ from auxiliares.cadastro_funcionarios import rotas_funcionarios
 from auxiliares.mqtt_handlers import configurar_mqtt_handlers
 from auxiliares.socketio_handlers import configurar_socketio_handlers
 from auxiliares.associacao import inicializa_Base_assoc
+from auxiliares.classes import inicializar_postos
+import auxiliares.classes as classes
+from app.supervisor import PostoSupervisor
+from app.socketio_gateway import register_socketio_handlers
 
 load_dotenv()
 
@@ -43,6 +47,11 @@ def create_app():
     rotas_funcionarios(app, mqtt, socketio)
     configurar_mqtt_handlers(mqtt, socketio)
     configurar_socketio_handlers(socketio)
+    inicializar_postos(mqtt)
+
+    supervisor = PostoSupervisor(classes.postos, socketio, mqtt)
+
+    register_socketio_handlers(socketio, supervisor)
 
     mqtt.init_app(app)
     # ───────────────────────────────────────────────

@@ -132,6 +132,11 @@ def configurar_rotas(app, mqttc, socketio):
             postos=postos
         )
 
+    @app.route('/supervisorio')
+    def supervisorio():
+        from auxiliares.configuracoes import ultimo_posto_bios
+        return render_template('supervisorio.html', num_postos=ultimo_posto_bios+1)
+    
     # Função controlada pela interface de controle.
     @app.route('/enviar', methods=['POST'])
     def enviar_dados():
@@ -154,7 +159,7 @@ def configurar_rotas(app, mqttc, socketio):
             # Lógica para tratar comandos diferentes
             if comando == 'Start':
                 #Enviando Tópicos para os dispositivos temporizadores
-                classes.inicializar_postos(mqttc)
+                #classes.inicializar_postos(mqttc)
                 classes.inicia_producao()
                 mqttc.publish(f"ControleProducao_DD", f"Start")
                 #Retorna para a página o sucesso da inicialização do sistema
@@ -166,10 +171,10 @@ def configurar_rotas(app, mqttc, socketio):
                 reiniciar_sistema(debug=debug_mode)
                 return jsonify(status='sucesso', mensagem='Sistema reiniciado.'), 200
             
-            elif comando == 'Restart_Produtos':
+            elif comando == 'Stop':
                 # Lógica para reiniciar produtos
-                reiniciar_produtos()
-                return jsonify(status='sucesso', mensagem='Produtos reiniciados.'), 200
+                classes.encerra_producao()
+                return jsonify(status='sucesso', mensagem='Produção encerrada'), 200
             
             else:
                 return jsonify(status='erro', mensagem='Comando desconhecido.'), 400
