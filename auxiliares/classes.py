@@ -79,28 +79,6 @@ class Tabela_Assoc:
 
 associacoes = Tabela_Assoc('associacoes')
 
-"""
-class Produto:
-    def __init__ (self, codigo_produto):
-        self.codigo_produto = codigo_produto
-        self.df_historico = pd.DataFrame(columns=[
-            "codigo_posto",
-            "inter_arrival_time",
-            "tempo_preparo",
-            "tempo_montagem",
-            "tempo_espera",
-            "tempo_transferencia",
-            "tempo_ciclo",
-            "hora"
-        ])
-        
-    def registrar_passagem(self, tempos: pd.DataFrame):
-        #Adiciona uma linha no DataFrame com os tempos do produto.
-        :param produto: instância de Produto
-        :param tempos: dicionário com os tempos
-
-        self.df_historico = pd.concat([self.df_historico, tempos], ignore_index=True)"""
-
 class Posto:
     def __init__ (self, posto, mqttc):
         self.id_posto = posto
@@ -137,25 +115,12 @@ class Posto:
 
         self.df_historico = pd.concat([self.df_historico, pd.DataFrame([nova_linha])], ignore_index=True)
         self.salvarDadosLocais()
-
-    def inicia_produto(self, produto):
-        self.produto_atual = produto
-        nova_linha = {
-            "produto": produto,
-            "tempo_preparo": None,
-            "tempo_montagem": None,
-            "tempo_transferencia": None,
-            "hora": datetime.now()
-        }
-        self.df_historico = pd.concat([self.df_historico, pd.DataFrame([nova_linha])], ignore_index=True)
-        self.salvarDadosLocais()
-        print(f"[{self.nome}] Novo produto iniciado: {produto}")
     
     def atualizar_tempo(self, produto, tipo_tempo, valor):
         if produto != None:
             if produto not in self.df_historico["produto"].values:
                 print(f"[{self.nome}] Produto {produto} não encontrado, criando nova linha.")
-                self.iniciar_produto(produto)
+                self.atualiza_produto(produto)
 
             self.df_historico.loc[self.df_historico["produto"] == produto, tipo_tempo] = valor
             self.salvarDadosLocais()
@@ -181,20 +146,69 @@ class Posto:
         print(f"[{self.nome}] Produto {produto} associado à última entrada (linha {idx}).")
 
     def calcula_transporte(self):
-        if self.n_posto > 0:
-            self.BS_posterior = time.perf_counter()
+        if self.n_posto < ultimo_posto_bios:
+            self.BS_posterior = time.perf_counter() 
             transporte = self.BS_posterior - self.BD_backup
+            transporte = round(transporte, 2)
             self.atualizar_tempo(self.produto_atual, "tempo_transferencia", transporte)
+        elif self.n_posto == ultimo_posto_bios:
+            transporte = 0
+            self.atualizar_tempo(self.produto_atual, "tempo_transferencia", transporte)
+        else:
+            print(f'[{self.nome}] - Posto inválido para transporte.')
+        
+        tempo_ciclo = self.calcular_tempo_ciclo()
+        self.atualizar_tempo(self.produto_atual, "tempo_ciclo", tempo_ciclo)
+        return
+
+    def calcular_tempo_ciclo(self, idx=None):
+        """
+        Calcula o tempo de ciclo como a soma dos tempos individuais.
+        Se idx for None, calcula para a última linha registrada.
+        """
+        if self.df_historico.empty:
+            print(f"[{self.nome}] Nenhum dado disponível para cálculo.")
+            return
+
+        # define o índice da linha a atualizar
+        if idx is None:
+            idx = self.df_historico.index[-1]
+
+        campos_tempos = [
+            "arrival_time",
+            "tempo_preparo",
+            "tempo_montagem",
+            "tempo_espera",
+            "tempo_transferencia"
+        ]
+
+        # obtém valores válidos (float) ignorando NaN
+        valores = [
+            float(self.df_historico.at[idx, c])
+            for c in campos_tempos
+            if pd.notna(self.df_historico.at[idx, c])
+        ]
+
+        if not valores:
+            print(f"[{self.nome}] Nenhum tempo válido para somar (linha {idx}).")
+            return
+
+        tempo_ciclo = sum(valores)
+        print(f"[{self.nome}] Tempo de ciclo atualizado: {tempo_ciclo:.2f}s.")
+        return tempo_ciclo
 
     def tratamento_dispositivo(self, payload):
         if payload in self.timestamp.keys():
             self.timestamp[payload] = time.perf_counter()
 
             if payload == 'BS':
-                postos[self.posto_anterior].calcula_transporte()
+                if self.n_posto > 0:
+                    print(f"chamando transporte BS - {self.posto_anterior}")
+                    postos[self.posto_anterior].calcula_transporte()
                 if self.maquina_estado == 0:
                     print(f'[{self.nome}] - ESTADO 1 - BS')
                     arrival = self.timestamp['BS'] - self.timestamp['BD']
+                    arrival = round(arrival, 2) 
                     self.inicia_montagem(arrival)
 
                     self.maquina_estado_anterior = self.maquina_estado
@@ -205,7 +219,9 @@ class Posto:
                 if self.maquina_estado == 1:
                     print(f'[{self.nome}] - ESTADO 2 - BT1')
                     preparo = self.timestamp['BT1'] - self.timestamp['BS']
+                    preparo = round(preparo, 2)                     
                     self.atualizar_tempo(self.produto_atual, "tempo_preparo", preparo)
+
                     self.maquina_estado_anterior = self.maquina_estado
                     self.maquina_estado = 2
                 return
@@ -214,6 +230,7 @@ class Posto:
                 if self.maquina_estado == 2:
                     print(f'[{self.nome}] - ESTADO 3 - BT2')
                     montagem = self.timestamp['BT2'] - self.timestamp['BT1']
+                    montagem = round(montagem, 2) 
                     self.atualizar_tempo(self.produto_atual, "tempo_montagem", montagem)
 
                     self.maquina_estado_anterior = self.maquina_estado
@@ -223,21 +240,25 @@ class Posto:
             if payload == 'BD':
                 if self.maquina_estado == 3:
                     print(f'[{self.nome}] - ESTADO 4 - BD')
-                    if self.produto_atual != None:
-                        espera = self.timestamp['BD'] - self.timestamp['BT2']
-                        self.atualizar_tempo(self.produto_atual, "tempo_espera", espera)
+                    if self.produto_atual == None:
+                        self.produto_atual = associacoes.palete_produto(self.palete_atual)
 
-                        if self.id_posto == f"posto_0":
-                            self.atualiza_produto(associacoes.palete_produto(self.palete_atual))
+                    espera = self.timestamp['BD'] - self.timestamp['BT2']
+                    espera = round(espera, 2) 
+                    self.atualizar_tempo(self.produto_atual, "tempo_espera", espera)
 
-                        if self.id_posto == f"posto_{ultimo_posto_bios}":
-                            associacoes.desassocia(self.produto_atual)
+                    if self.id_posto == f"posto_0":
+                        self.atualiza_produto(associacoes.palete_produto(self.palete_atual))
 
-                        self.produto_atual = None
-                        self.palete_atual = None
-                        self.BD_backup = time.perf_counter()
-                        self.maquina_estado = 0
-                        self.maquina_estado_anterior = 3
+                    if self.id_posto == f"posto_{ultimo_posto_bios}":
+                        self.calcula_transporte()
+                        associacoes.desassocia(self.produto_atual)
+
+                    self.produto_atual = None
+                    self.palete_atual = None
+                    self.BD_backup = time.perf_counter()
+                    self.maquina_estado = 0
+                    self.maquina_estado_anterior = 3
                 return
         elif verifica_palete_nfc(payload):
             if self.id_posto == "posto_0":
@@ -250,7 +271,7 @@ class Posto:
         if verifica_cod_produto(produto_lido):
             self.palete_atual = palete
             self.produto_atual = produto_lido
-            self.atualiza_produto(self, self.produto_atual)
+            self.atualiza_produto(self.produto_atual)
         else:
             print(f"[{self.nome}] - {palete} não foi associado.")
 
@@ -274,10 +295,24 @@ class Posto:
     def salvarDadosLocais(self):
         self.df_historico.to_csv(self.csvPath, index=False)
         self.df_historico.to_excel(self.XlsPath, index=False)
-        print(f"[{self.nome}] Dados salvos com sucesso.")
+        #print(f"[{self.nome}] Dados salvos com sucesso.")
 
 def trata_mensagem_DD(message):
-    if message.topic.split("/")[0] == 'rastreio_nfc' and producao:
+    # Separa a mensagem em topico e payload
+    topic = message.topic
+    payload = message.payload.decode()
+    topicos = topic.split("/")
+
+    if len(topicos) != 4:
+        return
+    else:
+        sistema, embarcado, dispositivo, agente = topicos 
+    
+    n_posto = int(dispositivo.split("_")[1])
+    if n_posto > ultimo_posto_bios:
+        return
+
+    if sistema == 'rastreio_nfc' and agente == 'dispositivo' and producao:
         dispositivo = message.topic.split("/")[2]
         agente = message.topic.split("/")[3]
         payload = str(str(message.payload).split("'")[1])

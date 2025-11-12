@@ -13,7 +13,7 @@ def configurar_mqtt_handlers(mqtt, socketio):
         try:
             front_mqtt_assoc(message, socketio)
         except Exception as e:
-            print(f"Erro tratamento rastreadores: {e}")
+            print(f"[MQTT] - Front Assoc: {e}")
 
         try:
             trata_mensagem_DD(message)
