@@ -130,7 +130,7 @@ def reiniciar_sistema(debug=False, dados=True, backup=False):
     reiniciar_produtos()
 
     # Parando o Script
-    #sys.exit(1)
+    sys.exit(1)
 
 
 def ler_ultimo_codigo(nome_arquivo):
