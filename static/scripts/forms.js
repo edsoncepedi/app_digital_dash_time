@@ -73,6 +73,10 @@ socket.on('aviso_ao_operador_assoc', data => {
     mostrarPopup(data.mensagem, data.cor, data.tempo);
 });
 
+socket.on('alerta_geral', data => {
+    mostrarPopup(data.mensagem, data.cor, data.tempo);
+});
+
 function mostrarPopup(mensagem, cor = '#333', duracao_ms = 3000) {
     const popup = document.getElementById('popup-aviso');
     popup.textContent = mensagem;

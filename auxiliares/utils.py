@@ -83,12 +83,27 @@ def reiniciar_produtos():
         print("Resetando contagem de produtos...")
         os.remove("produtos.txt")
 
-def reiniciar_sistema(debug=False):
-    if not debug:    
+    if os.path.exists("memoria.txt"):
+        print("Resetando contagem de produtos...")
+        os.remove("memoria.txt")
+
+def reiniciar_sistema(debug=False, dados=True, backup=False):
+    if not debug:
         horario = str(datetime.now().strftime("%d_%m_%Y_%H_%M_%S"))
         # Cria pasta de backup, se necessário
-        pasta_backup = f"backup_{horario}"
-        os.makedirs(pasta_backup, exist_ok=True)
+        if backup:
+            pasta_backup = f"backup_{horario}"
+            os.makedirs(pasta_backup, exist_ok=True)
+        if dados:
+            pasta_dados = f"dados_{horario}"
+            os.makedirs(pasta_dados, exist_ok=True)
+
+            dados = glob.glob("*.xlsx")
+            dados.extend(glob.glob("historico_associacoes.csv"))
+
+            for dado in dados:
+                destino_dados = os.path.join(pasta_dados, os.path.basename(dado))
+                shutil.copy2(dado, destino_dados)
 
     arquivos = glob.glob("*.csv")
     arquivos.extend(glob.glob("*.xlsx"))
@@ -99,7 +114,7 @@ def reiniciar_sistema(debug=False):
 
     for arquivo in arquivos:
         try:
-            if not debug:
+            if not debug and backup:
                 # Define destino no backup (mantendo só o nome do arquivo)
                 destino_backup = os.path.join(pasta_backup, os.path.basename(arquivo))
 
@@ -115,8 +130,8 @@ def reiniciar_sistema(debug=False):
     reiniciar_produtos()
 
     # Parando o Script
-    sys.exit(1)
-    #os.execv(sys.executable, ['python'] + sys.argv)
+    #sys.exit(1)
+
 
 def ler_ultimo_codigo(nome_arquivo):
     """

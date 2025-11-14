@@ -2,182 +2,553 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Painel de Controle - POSITIVO</title>
+    <title>Painel de Controle - DD</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
     <style>
+        :root {
+            --bg-body: #0b1020;
+            --bg-card: #151926ee;
+            --bg-card-soft: #1d2233;
+            --accent: #3b82f6;
+            --accent-soft: rgba(59,130,246,0.12);
+            --danger: #ef4444;
+            --danger-soft: rgba(239,68,68,0.12);
+            --warning: #f59e0b;
+            --success: #22c55e;
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --border-subtle: #1f2937;
+            --shadow-soft: 0 18px 45px rgba(0,0,0,0.45);
+            --radius-lg: 18px;
+            --radius-pill: 999px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-        }
-        button, input, select {
-            font-size: 1rem;
-            margin: 5px;
-        }
-        #status, #mensagem-servidor {
-            margin-top: 20px;
-            font-weight: bold;
-        }
-        .botoes {
-            margin-bottom: 30px;
-            text-align: center;
-        }
-        .linha-campos {
+            margin: 0;
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: radial-gradient(circle at top, #1d2440 0, #050816 50%, #020617 100%);
+            color: var(--text-main);
             display: flex;
-            justify-content: center;
+            flex-direction: column; /* ⬅ adicionado para stack vertical (topbar + container) */
             align-items: center;
-            gap: 40px;
-            margin-bottom: 20px;
+            justify-content: center;
         }
-        .campo {
+
+        /* ───── Topbar / Homebar ───── */
+        .topbar {
+            width: 100%;
+            background: rgba(2,6,23,0.98);
+            border-bottom: 1px solid rgba(15,23,42,0.9);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .topbar-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .brand {
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            color: var(--accent);
+        }
+
+        .nav {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .nav a {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 6px 12px;
+            border-radius: var(--radius-pill);
+            transition: background 0.18s ease, color 0.18s ease;
+        }
+
+        .nav a:hover {
+            background: #111827;
+            color: var(--text-main);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 980px;
+            margin: 32px 16px 40px;
+            padding: 28px 24px 36px;
+            background: var(--bg-card);
+            border-radius: 22px;
+            box-shadow: var(--shadow-soft);
+            border: 1px solid rgba(148,163,184,0.2);
+            backdrop-filter: blur(12px);
+        }
+
+        .header {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .logo-wrapper {
+            background: var(--bg-card-soft);
+            border-radius: 16px;
+            padding: 8px 10px;
+            border: 1px solid rgba(148,163,184,0.35);
+        }
+
+        .logo-wrapper img {
+            border-radius: 12px;
+            display: block;
+        }
+
+        .titulo {
             display: flex;
             flex-direction: column;
-            align-items: flex-start;
+            gap: 4px;
         }
-        .campo label {
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        .campo input:disabled {
-            background-color: #e9ecef;
-        }
-        /* opcional: dá uma largura mínima pros selects */
-        select {
-            min-width: 220px;
-        }
-    </style>
-</head>
-<body>
-    <!-- Indicador de status da Produção -->
-    <div class="row row-cols-auto" style="font-weight: bold;">
-      <div class="col">
-          <div>Produção: </div>
-      </div>
-      <div class="col">
-          <!-- Elemento onde o status será exibido via JavaScript -->
-          <div id="status-indicador">Verificando...</div>
-      </div>
-    </div>
 
-    <div id="popup-aviso" style="
+        .titulo h1 {
+            margin: 0;
+            font-size: 1.6rem;
+            letter-spacing: 0.03em;
+        }
+
+        .titulo span {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .status-bar {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .status-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        #status-indicador {
+            padding: 6px 14px;
+            border-radius: var(--radius-pill);
+            font-weight: 600;
+            font-size: 0.9rem;
+            background: var(--bg-card-soft);
+            border: 1px solid rgba(148,163,184,0.4);
+            min-width: 120px;
+            text-align: center;
+        }
+
+        /* Popup central */
+        #popup-aviso {
             display: none;
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            padding: 20px 35px;
-            border-radius: 8px;
-            color: white;
-            font-weight: bold;
-            font-size: 18px;
+            padding: 18px 28px;
+            border-radius: 14px;
+            color: #f9fafb;
+            font-weight: 600;
+            font-size: 1rem;
             z-index: 10000;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            max-width: 80%;
+            box-shadow: 0 18px 45px rgba(0,0,0,0.55);
+            max-width: 90%;
             text-align: center;
-        "></div>
+            background: #111827;
+            border: 1px solid rgba(248,250,252,0.18);
+        }
 
-    <div style="text-align:center">
-        <img src="../static/img/positivo.jpg" width="400" height="341"/>
-    </div>
-    <h1 style="text-align:center;">Painel de Controle</h1>
+        .card {
+            margin-top: 26px;
+            padding: 18px 16px 18px;
+            background: var(--bg-card-soft);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-subtle);
+        }
 
-    <div class="botoes">
-        <button type="button" onclick="enviarComando('Start')">▶️ Iniciar Sistema</button>
-        <button type="button" onclick="enviarComando('Restart')">🔁 Reiniciar Sistema</button>
-        <button type="button" onclick="enviarComando('Stop')">🛑 Parar Sistema</button>
-    </div>
-    
-    <!-- Áreas de status -->
-    <div id="status" style="text-align:center;">Status: aguardando envio...</div>
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
 
-    <!-- NOVO BLOCO: alocação de operadores por posto -->
-    <h2 style="text-align:center; margin-top: 40px;">Alocação de operadores por posto</h2>
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
 
-    <form method="POST" action="{{ url_for('painel_controle') }}">
-        <div class="linha-campos" style="flex-direction: column; gap: 15px;">
-            {% for posto in postos %}
-            <div class="campo">
-                <label for="posto_{{ posto.id }}">{{ posto.nome }}</label>
-                <select id="posto_{{ posto.id }}" name="posto_{{ posto.id }}">
-                    <option value="">-- Selecionar funcionário --</option>
-                    {% for f in funcionarios %}
-                        <option value="{{ f.id }}"
-                            {% if posto.funcionario_id == f.id %}selected{% endif %}>
-                            {{ f.nome }} ({{ f.rfid_tag }})
-                        </option>
-                    {% endfor %}
-                </select>
+        .card-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .linha-campos {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+
+        .campo {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            min-width: 210px;
+        }
+
+        .campo label {
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+        }
+
+        .campo input,
+        .campo select {
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid rgba(148,163,184,0.5);
+            padding: 8px 10px;
+            font-size: 0.95rem;
+            background: #020617;
+            color: var(--text-main);
+            outline: none;
+            transition: border 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+        }
+
+        .campo input:focus,
+        .campo select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px rgba(59,130,246,0.5);
+            background: #020617;
+        }
+
+        .campo input::placeholder {
+            color: #6b7280;
+        }
+
+        .campo input:disabled {
+            background-color: #111827;
+            color: #6b7280;
+        }
+
+        select {
+            min-width: 220px;
+        }
+
+        .botoes {
+            margin-top: 18px;
+            text-align: center;
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            font-size: 0.95rem;
+            padding: 9px 16px;
+            border-radius: var(--radius-pill);
+            border: 1px solid transparent;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            transition: background 0.2s ease, transform 0.08s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        button:active {
+            transform: translateY(1px);
+            box-shadow: none;
+        }
+
+        .btn-start {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 10px 28px rgba(59,130,246,0.55);
+        }
+
+        .btn-start:hover {
+            background: #2563eb;
+        }
+
+        .btn-restart {
+            background: var(--accent-soft);
+            color: #bfdbfe;
+            border-color: rgba(59,130,246,0.7);
+        }
+
+        .btn-restart:hover {
+            background: rgba(59,130,246,0.22);
+        }
+
+        .btn-stop {
+            background: var(--danger-soft);
+            color: #fecaca;
+            border-color: rgba(239,68,68,0.8);
+        }
+
+        .btn-stop:hover {
+            background: rgba(239,68,68,0.22);
+        }
+
+        #status {
+            margin-top: 16px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        #status span {
+            display: inline-block;
+            margin-left: 4px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-top: 36px;
+            margin-bottom: 16px;
+            font-size: 1.2rem;
+        }
+
+        .subtext {
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        form .linha-campos {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+        }
+
+        form .campo {
+            background: #020617;
+            border-radius: 12px;
+            padding: 10px 12px;
+            border: 1px solid rgba(31,41,55,0.9);
+        }
+
+        form .campo label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 720px) {
+            .container {
+                margin: 18px 10px 28px;
+                padding: 20px 14px 26px;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .status-bar {
+                align-items: flex-start;
+            }
+
+            .logo-wrapper img {
+                width: 220px;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">Painel de Controle</div>
+        <nav class="nav">
+          <a href="/supervisorio">Supervisório</a>
+          <a href="/cadastro_funcionario">Funcionários</a>
+          <a href="/controle">Painel de Controle</a>
+        </nav>
+      </div>
+    </header>
+
+    <div class="container">
+        <!-- Cabeçalho + status -->
+        <div class="header">
+            <div class="header-left">
+                <div class="logo-wrapper">
+                    <img src="../static/img/positivo.jpg" width="260" height="222" alt="Logo Positivo">
+                </div>
+                <div class="titulo">
+                    <h1>Painel de Controle</h1>
+                    <span>Monitoramento e controle da linha de produção</span>
+                </div>
             </div>
-            {% endfor %}
+            <div class="status-bar">
+                <span class="status-label">Status da Produção</span>
+                <div id="status-indicador">Verificando...</div>
+            </div>
         </div>
 
-        <div class="botoes">
-            <button type="submit">💾 Salvar alocação</button>
+        <!-- Popup central -->
+        <div id="popup-aviso"></div>
+
+        <!-- Card: valor inteiro + botões -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Configuração da produção</div>
+                    <div class="card-subtitle">Informe a quantidade planejada antes de iniciar o sistema.</div>
+                </div>
+            </div>
+
+            <!-- Campo número inteiro -->
+            <div class="linha-campos">
+                <div class="campo">
+                    <label for="valor-inteiro">Quantidade planejada (inteiro):</label>
+                    <input
+                        type="number"
+                        id="valor-inteiro"
+                        name="valor_inteiro"
+                        min="1"
+                        step="1"
+                        placeholder="Digite um número inteiro maior que zero"
+                    >
+                </div>
+            </div>
+
+            <!-- Botões -->
+            <div class="botoes">
+                <button type="button" class="btn-start" onclick="enviarComando('Start')">
+                    ▶️ <span>Iniciar Sistema</span>
+                </button>
+                <button type="button" class="btn-restart" onclick="enviarComando('Restart')">
+                    🔁 <span>Reiniciar Sistema</span>
+                </button>
+                <button type="button" class="btn-stop" onclick="enviarComando('Stop')">
+                    🛑 <span>Parar Sistema</span>
+                </button>
+            </div>
+
+            <!-- Status de envio -->
+            <div id="status">Status: <span>aguardando envio...</span></div>
         </div>
-    </form>
+
+        <!-- Bloco: alocação de operadores -->
+        <h2>Alocação de operadores por posto</h2>
+        <div class="subtext">Cada funcionário só pode ser associado a um posto por vez.</div>
+
+        <form method="POST" action="{{ url_for('painel_controle') }}">
+            <div class="linha-campos">
+                {% for posto in postos %}
+                <div class="campo">
+                    <label for="posto_{{ posto.id }}">{{ posto.nome }}</label>
+                    <select id="posto_{{ posto.id }}" name="posto_{{ posto.id }}">
+                        <option value="">-- Selecionar funcionário --</option>
+                        {% for f in funcionarios %}
+                            <option value="{{ f.id }}"
+                                {% if posto.funcionario_id == f.id %}selected{% endif %}>
+                                {{ f.nome }} ({{ f.rfid_tag }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="botoes">
+                <button type="submit" class="btn-restart">
+                    💾 <span>Salvar alocação</span>
+                </button>
+            </div>
+        </form>
+    </div>
 
     <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
     <script>
         const socket = io();
-        // Enviar todos os dados ao clicar em "Start"
-        /*
-        document.getElementById('form-start').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const tempoBIOS = document.getElementById('tempoBIOS').value;
-            const tempoRUNIN = document.getElementById('tempoRUNIN').value;
-            const tempoRETRABALHO = document.getElementById('tempoRETRABALHO').value;
-            const tempoTESTE = document.getElementById('tempoTESTE').value;
 
-            if (tempoBIOS && tempoRUNIN && tempoRETRABALHO && tempoTESTE) {
-                const dados = {
-                    tipo: 'start',
-                    tempoBIOS,
-                    tempoRUNIN,
-                    tempoRETRABALHO,
-                    tempoTESTE
-                };
-
-                // Atualiza o status antes de enviar a requisição ao servidor
-                atualizarStatus({ status: 'sucesso', mensagem: '🔄 Processando... Aguarde!' });
-
-                // Bloqueia os campos e botões após o envio
-                bloquearCampos(true);
-                bloquearBotoes(true);
-
-                fetch('/enviar', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(dados)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    atualizarStatus(data);
-                })
-                .catch(() => {
-                    mostrarErro();
-                    // Desbloqueia campos e botões se houver erro
-                    bloquearCampos(false);
-                    bloquearBotoes(false);
-                });
-            } else {
-                alert('Por favor, preencha todos os campos de tempo antes de iniciar o sistema.');
-            }
-        });
-        */
-
-        // Envia comandos simples (reiniciar etc.)
+        // Envia comandos simples (start/restart/stop)
         function enviarComando(comando) {
+            let valorInteiro = null;
+
+            if (comando === 'Start') {
+                const input = document.getElementById('valor-inteiro');
+                const bruto = input.value.trim();
+                const numero = Number(bruto);
+
+                if (
+                    bruto === '' ||
+                    Number.isNaN(numero) ||
+                    !Number.isInteger(numero) ||
+                    numero <= 0
+                ) {
+                    mostrarPopup(
+                        'Informe um número inteiro válido maior que zero antes de iniciar o sistema.',
+                        '#b91c1c',
+                        4200
+                    );
+                    input.focus();
+                    return;
+                }
+
+                valorInteiro = numero;
+            }
+
+            const payload = {
+                tipo: 'comando',
+                mensagem: comando
+            };
+
+            if (comando === 'Start' && valorInteiro !== null) {
+                payload.valor_inteiro = valorInteiro;
+            }
+
             fetch('/enviar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tipo: 'comando', mensagem: comando })
+                body: JSON.stringify(payload)
             })
             .then(response => response.json())
             .then(data => {
                 atualizarStatus(data);
-                // Se o comando for "Reiniciar", desbloqueia campos e botões
                 if (comando === 'Restart') {
-                    bloquearCampos(false);
-                    bloquearBotoes(false);
+                    if (typeof bloquearCampos === 'function') bloquearCampos(false);
+                    if (typeof bloquearBotoes === 'function') bloquearBotoes(false);
                 }
             })
             .catch(() => mostrarErro());
@@ -186,35 +557,39 @@
         socket.on('atualiza_status_producao', data => {
             const elemento = document.getElementById('status-indicador');
             if (data.status === true) {
-                elemento.textContent = 'Ligada 🟢'; // Mostra status positivo com emoji verde
-                elemento.style.color = 'green';        // Muda a cor do texto para verde
+                elemento.textContent = 'Ligada 🟢';
+                elemento.style.color = '#22c55e';
+                elemento.style.borderColor = 'rgba(34,197,94,0.7)';
+                elemento.style.background = 'rgba(34,197,94,0.12)';
             } else {
-                elemento.textContent = 'Desligada 🔴'; // Mostra status negativo com emoji vermelho
-                elemento.style.color = 'red';             // Muda a cor do texto para vermelho
+                elemento.textContent = 'Desligada 🔴';
+                elemento.style.color = '#f97373';
+                elemento.style.borderColor = 'rgba(248,113,113,0.7)';
+                elemento.style.background = 'rgba(248,113,113,0.12)';
             }
         });
 
         function atualizarStatus(data) {
             const statusDiv = document.getElementById('status');
 
-            // Atualização de status baseada na resposta do servidor ou ação do usuário
             if (data.status === 'sucesso') {
                 statusDiv.textContent = data.mensagem || "✅ Mensagem enviada com sucesso.";
-                statusDiv.style.color = "green";
+                statusDiv.style.color = "#4ade80";
             } else {
                 statusDiv.textContent = "❌ Erro ao enviar.";
-                statusDiv.style.color = "red";
+                statusDiv.style.color = "#f97373";
             }
         }
 
         function mostrarErro() {
-            document.getElementById('status').textContent = "❌ Erro na comunicação com o servidor.";
-            document.getElementById('status').style.color = "red";
+            const status = document.getElementById('status');
+            status.textContent = "❌ Erro na comunicação com o servidor.";
+            status.style.color = "#f97373";
         }
 
         async function checarPing() {
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 1000); // 1 segundo de limite
+            const timeout = setTimeout(() => controller.abort(), 1000);
 
             try {
                 const resp = await fetch("/ping", { signal: controller.signal });
@@ -223,41 +598,38 @@
                 if (!resp.ok) throw new Error(resp.status);
 
                 console.log("Servidor ok, recarregando...");
-                location.reload(); // só recarrega quando o servidor está realmente no ar
+                location.reload();
             } catch (e) {
                 console.warn("Servidor indisponível, tentando novamente...");
-                setTimeout(checarPing, 1000); // tenta de novo em 1s
+                setTimeout(checarPing, 1000);
             }
         }
 
-        // quando desconectar, ativa monitoramento
         socket.on("disconnect", () => {
             console.warn("Socket.IO desconectado, iniciando checagem...");
             checarPing();
         });
 
-        // quando reconectar, cancela monitoramento
         socket.on("connect", () => {
             console.log("Socket.IO reconectado!");
         });
-            
+
         function validarAlocacao() {
-            // todos os selects dos postos (id começa com "posto_")
             const selects = document.querySelectorAll('select[id^="posto_"]');
             const usados = new Set();
 
             for (const sel of selects) {
                 const valor = sel.value;
-                if (!valor) continue; // posto sem funcionário atribuído
+                if (!valor) continue;
 
                 if (usados.has(valor)) {
                     alert("O mesmo funcionário não pode ser atribuído a mais de um posto.");
-                    return false; // cancela o submit
+                    return false;
                 }
                 usados.add(valor);
             }
 
-            return true; // ok pra enviar
+            return true;
         }
 
         function mostrarPopup(mensagem, cor = '#333', duracao_ms = 3000) {
@@ -272,6 +644,10 @@
         }
 
         socket.on('aviso_lista_func', data => {
+            mostrarPopup(data.mensagem, data.cor, data.tempo);
+        });
+
+        socket.on('alerta_geral', data => {
             mostrarPopup(data.mensagem, data.cor, data.tempo);
         });
     </script>

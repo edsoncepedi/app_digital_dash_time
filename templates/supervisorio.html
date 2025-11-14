@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Supervisório de Postos</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     :root{
@@ -15,13 +16,64 @@
       --accent:#cfe88b;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial}
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--txt);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial
+    }
+
+    /* ───── Topbar / Homebar ───── */
+    .topbar{
+      background:#1b1d21;
+      border-bottom:1px solid #00000055;
+    }
+    .topbar-inner{
+      max-width:1280px;
+      margin:0 auto;
+      padding:8px 12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+    }
+    .brand{
+      font-weight:800;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      font-size:14px;
+      color:var(--accent);
+    }
+    .nav{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .nav a{
+      font-size:14px;
+      color:var(--muted);
+      text-decoration:none;
+      padding:6px 10px;
+      border-radius:999px;
+      transition:background .15s, color .15s;
+    }
+    .nav a:hover{
+      background:#2f3136;
+      color:var(--txt);
+    }
+
     .wrap{max-width:1280px;margin:24px auto;padding:0 12px}
     .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
-    .card{background:var(--panel);border-radius:14px;padding:16px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
+    .card{background:var(--panel);border-radius:14px;padding:16px;box-shadow:0 4px 16px rgba(0,0,0,.25);font-size:20px}
     .title{font-weight:800;letter-spacing:.4px;margin-bottom:8px;color:var(--accent);text-transform:uppercase}
     .value{font-size:36px;font-weight:800}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:16px}
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(280px, auto));
+      gap:16px;
+      margin-top:16px;
+      justify-content:center;
+    }
     .posto{position:relative;overflow:hidden;border-radius:18px}
     .head{font-size:26px;font-weight:900;letter-spacing:1px}
     .tag{position:absolute;top:0;left:0;right:0;height:56px;display:flex;align-items:center;padding:0 16px}
@@ -30,20 +82,94 @@
     .tag.preparo{background:var(--preparo-bg);color:var(--preparo)}
     .tag.montagem{background:var(--montagem-bg);color:var(--montagem)}
     .row{display:flex;justify-content:space-between;align-items:center;margin:8px 0;gap:8px}
-    .chip{font-size:12px;padding:6px 10px;border-radius:999px;background:#2f3136;color:var(--txt)}
+    .chip{font-size:16px;padding:6px 10px;border-radius:999px;background:#2f3136;color:var(--txt)}
     .btn{cursor:pointer;border:none}
     .btn:active{transform:translateY(1px);opacity:.9}
     .muted{color:var(--muted)}
     .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+
+    /* Label do nome do posto */
+    .posto-label{
+      font-size:20px;
+      font-weight:600;
+      color:var(--muted);
+      margin-bottom:4px;
+    }
+
+    /* Operador (nome + avatar) */
+    .operator-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin:8px 0;
+      gap:8px;
+    }
+    .operator{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .operator-avatar{
+      width:32px;
+      height:32px;
+      border-radius:50%;
+      background:#2f3136;
+      border:1px solid #3f4248;
+      background-size:cover;
+      background-position:center;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:13px;
+      color:var(--muted);
+      overflow:hidden;
+    }
+    .operator-name{
+      font-size:13px;
+      color:var(--muted);
+    }
+    
+    #popup-aviso {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 18px 28px;
+            border-radius: 14px;
+            color: #f9fafb;
+            font-weight: 600;
+            font-size: 1rem;
+            z-index: 10000;
+            box-shadow: 0 18px 45px rgba(0,0,0,0.55);
+            max-width: 90%;
+            text-align: center;
+            background: #111827;
+            border: 1px solid rgba(248,250,252,0.18);
+        }
   </style>
 </head>
+<!-- Popup central -->
+<div id="popup-aviso"></div>
 <body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">Supervisório</div>
+    <nav class="nav">
+      <a href="/supervisorio">Supervisório</a>
+      <a href="/cadastro_funcionario">Funcionários</a>
+      <a href="/controle">Painel de Controle</a>
+    </nav>
+  </div>
+</header>
+
 <div class="wrap">
-  <!-- KPIs topo (exemplo simples; ajuste como quiser) -->
+  <!-- KPIs topo -->
   <div class="kpis">
     <div class="card"><div class="title">Order ID</div><div id="kpi-order" class="value">000001</div></div>
     <div class="card"><div class="title">Tempo de Operação</div><div id="kpi-time" class="value">00:00:00</div></div>
-    <div class="card"><div class="title">Produção Atual</div><div id="kpi-prod" class="value">0/100</div></div>
+    <div class="card"><div class="title">Produção Atual</div><div id="kpi-prod" class="value">---/---</div></div>
     <div class="card"><div class="title">Projeção</div><div id="kpi-proj" class="value">--</div></div>
   </div>
 
@@ -54,16 +180,18 @@
 <script>
 /* ===================== CONFIG ===================== */
 window.NUM_POSTOS = window.NUM_POSTOS ?? 3;
+let meta_prod = 100;
+let currentProd = 0; // guarda produção atual para projeção
 
 // Mapeamento DINÂMICO: estado da máquina -> título do card
-// Estados esperados (compatível com sua classe): 0=IDLE, 1=BS, 2=BT1, 3=BT2, 4=BD
+// Estados esperados: 0=IDLE, 1=BS, 2=BT1, 3=BT2, 4=BD
 const DEFAULT_STATE_TITLES = {
-  0: "Arrival",   // IDLE - BD
-  1: "Preparo",  // BS
-  2: "Montagem", // BT1
-  3: "Espera" // BT2
+  0: "Arrival",   // IDLE
+  1: "Preparo",   // BS
+  2: "Montagem",  // BT1
+  3: "Espera"     // BT2
 };
-// Se quiser sobrescrever em runtime: window.STATE_TITLES = { ... }
+// Se quiser sobrescrever: window.STATE_TITLES = { ... }
 /* ================================================== */
 
 // Helpers de estado
@@ -74,7 +202,7 @@ const titleClass = (title) => {
   title = (title || '').toLowerCase();
   if(title.startsWith('espe'))  return 'espera';
   if(title.startsWith('mont'))  return 'montagem';
-  if(title.startsWith('prep')) return 'preparo';
+  if(title.startsWith('prep'))  return 'preparo';
   return 'arrival';
 };
 const fmtSec = (v) => (v==null || Number.isNaN(v)) ? '--' : (typeof v==='number' ? v.toFixed(2)+'s' : v);
@@ -91,16 +219,28 @@ function buildCard(n){
     </div>
     <div style="height:56px"></div>
 
-    <div class="row"><span>Product Code:</span><span id="p${n}-produto" class="chip">--</span></div>
-    <div class="row"><span>Model:</span><span id="p${n}-modelo" class="chip muted">--</span></div>
+    <div class="posto-label">Posto ${n}</div>
+
+    <div class="row"><span>Produto:</span><span id="p${n}-produto" class="chip">--</span></div>
+    <div class="row"><span>Modelo:</span><span id="p${n}-modelo" class="chip muted">--</span></div>
     <div class="row"><span>Estado:</span><span id="p${n}-estado" class="chip">IDLE</span></div>
 
+    <div class="operator-row">
+      <span>Operador:</span>
+      <div class="operator">
+        <div class="operator-avatar" id="p${n}-op-avatar">?</div>
+        <span class="operator-name" id="p${n}-op-nome">Não alocado</span>
+      </div>
+    </div>
+
+    <!--
     <div class="toolbar">
       <button class="chip btn" onclick="cmd(${n}, 'buzzer', {on:true})">Buzzer ON</button>
       <button class="chip btn" onclick="cmd(${n}, 'buzzer', {on:false})">Buzzer OFF</button>
       <button class="chip btn" onclick="cmd(${n}, 'light', {color:'green'})">Luz Verde</button>
       <button class="chip btn" onclick="cmd(${n}, 'light', {color:'red'})">Luz Vermelha</button>
     </div>
+    -->
   `;
   return el;
 }
@@ -126,6 +266,13 @@ socket.on('connect', joinAll);
 function updateFromSnapshot(s){
   if(!s || !s.id) return;
   const n = s.id.split('_')[1];
+  const n_number = Number(n);
+  const numPostos = Number(window.NUM_POSTOS) || 0;
+
+  // se for o último posto, atualiza KPI de produção
+  if (n_number === numPostos - 1){
+    setKpiProducao(s.n_produtos, meta_prod);
+  }
 
   // Título dinâmico (Montagem/Preparo/Espera) a partir do ESTADO
   const titulo = titleFor(s.state);
@@ -137,17 +284,55 @@ function updateFromSnapshot(s){
     tag.classList.add(titleClass(titulo));
   }
 
-  // Campos
+  // Campos básicos
   const setText = (id, txt) => { const el = document.getElementById(id); if(el) el.textContent = txt; };
 
   setText(`p${n}-produto`, s.produto ?? '--');
   setText(`p${n}-modelo`,  s.modelo  ?? '—'); // opcional, caso envie do backend
   setText(`p${n}-estado`,  stateName(s.state));
+
+  // Operador (nome + foto)
+  const nomeOp =
+    s.funcionario_nome ||
+    s.operador_nome ||
+    (s.funcionario && s.funcionario.nome) ||
+    null;
+
+  const imgOp =
+    s.funcionario_imagem ||
+    s.operador_imagem ||
+    (s.funcionario && s.funcionario.imagem) ||
+    null;
+
+  const nomeEl   = document.getElementById(`p${n}-op-nome`);
+  const avatarEl = document.getElementById(`p${n}-op-avatar`);
+
+  if (nomeEl && avatarEl){
+    if (nomeOp){
+      nomeEl.textContent = nomeOp;
+    } else {
+      nomeEl.textContent = 'Não alocado';
+    }
+
+    if (imgOp){
+      // usa imagem como fundo, remove texto
+      avatarEl.style.backgroundImage = `url(${imgOp})`;
+      avatarEl.textContent = '';
+    } else {
+      avatarEl.style.backgroundImage = '';
+      const inicial = (nomeOp && nomeOp.trim()) ? nomeOp.trim()[0].toUpperCase() : '?';
+      avatarEl.textContent = inicial;
+    }
+  }
 }
 
 // Eventos do backend
 socket.on('posto/state_snapshot', updateFromSnapshot);
 socket.on('posto/state_changed', updateFromSnapshot);
+socket.on('producao/control', data => {
+  meta_prod = data.meta_producao;
+  setKpiProducao(currentProd, meta_prod);
+});
 
 // Comandos → backend → Supervisor → Posto → MQTT
 function cmd(n, command, args={}){
@@ -155,15 +340,147 @@ function cmd(n, command, args={}){
 }
 window.cmd = cmd; // para testar no console
 
-// KPI: tempo de operação (exemplo)
-let start = Date.now();
-setInterval(()=>{
-  const ms = Date.now()-start;
-  const hh = String(Math.floor(ms/3600000)).padStart(2,'0');
-  const mm = String(Math.floor(ms/60000)%60).padStart(2,'0');
-  const ss = String(Math.floor(ms/1000)%60).padStart(2,'0');
-  document.getElementById('kpi-time').textContent = `${hh}:${mm}:${ss}`;
-},1000);
+
+async function checarPing() {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 1000); // 1 segundo de limite
+
+  try {
+    const resp = await fetch("/ping", { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!resp.ok) throw new Error(resp.status);
+
+    console.log("Servidor ok, recarregando...");
+    location.reload(); // só recarrega quando o servidor está realmente no ar
+  } catch (e) {
+    console.warn("Servidor indisponível, tentando novamente...");
+    setTimeout(checarPing, 1000); // tenta de novo em 1s
+  }
+}
+
+// quando desconectar, ativa monitoramento
+socket.on("disconnect", () => {
+  console.warn("Socket.IO desconectado, iniciando checagem...");
+  pauseTimer();
+  checarPing();
+});
+
+/* ================== CONTADOR CONTROLÁVEL ================== */
+
+let timerInterval = null;
+let elapsedMs = 0;
+let running = false;
+let lastTick = null;
+
+function fmtTime(ms) {
+  const hh = String(Math.floor(ms / 3600000)).padStart(2, '0');
+  const mm = String(Math.floor(ms / 60000) % 60).padStart(2, '0');
+  const ss = String(Math.floor(ms / 1000) % 60).padStart(2, '0');
+  return `${hh}:${mm}:${ss}`;
+}
+
+function updateDisplay() {
+  document.getElementById("kpi-time").textContent = fmtTime(elapsedMs);
+}
+
+function startTimer() {
+  if (running) return;
+  running = true;
+  lastTick = Date.now();
+
+  timerInterval = setInterval(() => {
+    const now = Date.now();
+    const delta = now - lastTick; // tempo real desde o último tick
+    lastTick = now;               // atualiza referência
+    elapsedMs += delta;
+    updateDisplay();
+  }, 1000);
+}
+
+function pauseTimer() {
+  if (!running) return;
+  running = false;
+  clearInterval(timerInterval);
+  timerInterval = null;
+}
+
+function resetTimer() {
+  pauseTimer();
+  elapsedMs = 0;
+  updateDisplay();
+}
+
+/* Disponibiliza para o console/manual e para o backend */
+window.timer = {
+  start: startTimer,
+  stop: pauseTimer,
+  reset: resetTimer,
+  set: (ms) => { elapsedMs = ms; updateDisplay(); },
+  get: () => elapsedMs
+};
+
+socket.on("timer/control", (msg) => {
+  if (msg.action === "start") timer.start();
+  if (msg.action === "stop")  timer.stop();
+  if (msg.action === "reset") timer.reset();
+  if (msg.action === "set")   timer.set(msg.ms || 0);
+});
+
+/* ========= KPI Produção + Projeção ========= */
+
+function atualizarProjecao(atual, meta){
+  const projEl = document.getElementById("kpi-proj");
+  if (!projEl) return;
+
+  // precisa ter pelo menos 1 peça e algum tempo decorrido
+  if (!atual || elapsedMs <= 0 || !meta || meta <= 0){
+    projEl.textContent = "--";
+    return;
+  }
+
+  // tempo médio por peça (ms/peça)
+  const tempoPorPeca = elapsedMs / atual;
+
+  // tempo TOTAL estimado para produzir "meta" peças
+  const tempoTotalMs = tempoPorPeca * meta;
+
+  // aqui vou mostrar o TEMPO TOTAL, como no seu exemplo 13 min 20 s
+  const totalSeconds = Math.round(tempoTotalMs / 1000);
+  const horas  = Math.floor(totalSeconds / 3600);
+  const minutos = Math.floor((totalSeconds % 3600) / 60);
+  const segundos = totalSeconds % 60;
+
+  let texto = "";
+  if (horas > 0){
+    texto += `${horas} h `;
+  }
+  texto += `${minutos} min ${segundos} s`;
+
+  projEl.textContent = texto;
+}
+
+function setKpiProducao(atual, meta) {
+  currentProd = atual;
+  document.getElementById("kpi-prod").textContent = `${atual}/${meta}`;
+  atualizarProjecao(atual, meta);
+}
+
+function mostrarPopup(mensagem, cor = '#333', duracao_ms = 3000) {
+            const popup = document.getElementById('popup-aviso');
+            popup.textContent = mensagem;
+            popup.style.backgroundColor = cor;
+            popup.style.display = 'block';
+
+            setTimeout(() => {
+                popup.style.display = 'none';
+            }, duracao_ms);
+        }
+
+socket.on('alerta_geral', data => {
+    mostrarPopup(data.mensagem, data.cor, data.tempo);
+});
+
 </script>
 </body>
 </html>

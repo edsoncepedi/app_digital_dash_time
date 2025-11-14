@@ -98,41 +98,80 @@ def rotas_funcionarios(app, mqttc, socketio):
         # 1) Pegar JSON da requisição
         data = request.get_json(silent=True) or {}
         tag = data.get('tag')
-        posto = data.get('posto')
+        posto_nome = data.get('posto')   # ex.: "posto_0"
 
-        if not tag or not posto:
-            return jsonify({"status": "error", "message": "Campo 'tag' é obrigatório."}), 400
+        if not tag or not posto_nome:
+            return jsonify({
+                "status": "error",
+                "message": "Campos 'tag' e 'posto' são obrigatórios."
+            }), 400
+
         session = SessionLocal()
 
         try:
-            # 3) Buscar funcionário pela tag
+            # 2) Buscar funcionário pela tag
             func = session.query(Funcionario).filter_by(rfid_tag=tag).first()
 
             if func is None:
-                # 🔴 Decisão: tag não encontrada
-                # aqui você pode negar acesso, mandar MQTT com "acesso negado", etc.
+                # 🔴 Tag não encontrada
                 resposta = {
                     "status": "unknown_tag",
-                    "posto": posto,
+                    "posto": posto_nome,
                     "message": f"Tag {tag} não cadastrada.",
                     "autorizado": False
                 }
-            else:
-                # 🟢 Decisão: tag encontrada
-                # aqui você pode liberar acesso, mandar MQTT com "abrir porta", etc.
+                return jsonify(resposta), 200
+
+            # 3) Buscar posto pelo NOME recebido (posto_0, posto_1, ...)
+            posto_db = session.query(Posto).filter_by(nome=posto_nome).first()
+
+            if posto_db is None:
+                # posto não existe na tabela
                 resposta = {
-                    "status": "ok",
-                    "message": "Acesso autorizado.",
-                    "posto": posto,
-                    "autorizado": True,
+                    "status": "invalid_posto",
+                    "posto": posto_nome,
+                    "message": f"Posto '{posto_nome}' não cadastrado.",
+                    "autorizado": False,
                     "funcionario": {
                         "id": func.id,
                         "nome": func.nome,
                         "rfid_tag": func.rfid_tag,
-                        "horas_trabalho": float(func.horas_trabalho)
                     }
                 }
+                return jsonify(resposta), 200
 
+            # 4) Verificar se o funcionário é o responsável por ESTE posto
+            # (coluna funcionario_id da tabela posto)
+            if posto_db.funcionario_id != func.id:
+                resposta = {
+                    "status": "forbidden_posto",
+                    "posto": posto_nome,
+                    "message": (
+                        f"Funcionário '{func.nome}' não está autorizado "
+                        f"a operar no posto '{posto_nome}'."
+                    ),
+                    "autorizado": False,
+                    "funcionario": {
+                        "id": func.id,
+                        "nome": func.nome,
+                        "rfid_tag": func.rfid_tag,
+                    }
+                }
+                return jsonify(resposta), 200
+
+            # 🟢 Se chegou aqui: tag encontrada e funcionário bate com o posto
+            resposta = {
+                "status": "ok",
+                "message": "Acesso autorizado.",
+                "posto": posto_nome,
+                "autorizado": True,
+                "funcionario": {
+                    "id": func.id,
+                    "nome": func.nome,
+                    "rfid_tag": func.rfid_tag,
+                    "horas_trabalho": float(func.horas_trabalho)
+                }
+            }
             return jsonify(resposta), 200
 
         finally:

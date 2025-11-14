@@ -11,7 +11,7 @@ import pandas as pd
 
 from auxiliares.configuracoes import ultimo_posto_bios, cartao_palete
 from auxiliares.utils import verifica_palete_nfc, verifica_cod_produto
-from auxiliares.banco_post import inserir_dados  # noqa: F401  # mantido para uso futuro
+from auxiliares.banco_post import inserir_dados, consulta_funcionario_posto  # noqa: F401  # mantido para uso futuro
 
 from enum import Enum
 from dataclasses import dataclass
@@ -30,6 +30,7 @@ class PostoState(Enum):
 class PostoSnapshot:
     id: str
     state: PostoState
+    modelo: Optional[str]
     produto: Optional[str]
     palete: Optional[str]
     arrival: float | None
@@ -38,7 +39,10 @@ class PostoSnapshot:
     t_espera: float | None
     t_transf: float | None
     t_ciclo: float | None
+    n_produtos: int
     last_update_ts: float
+    funcionario_nome: Optional[str]
+    funcionario_imagem: Optional[str]
 
 # -----------------------------------------------------------------------------
 # LOGGING
@@ -84,9 +88,11 @@ def inicia_producao() -> None:
     if not producao:
         producao = True
         for i in range(ultimo_posto_bios + 1):
-            nome = f"posto_{i}"
-            postos[nome].inicia_prod_tempo()
-
+            posto = f"posto_{i}"
+            postos[posto].inicia_prod_tempo()
+            nome, imagem = consulta_funcionario_posto(posto)
+            postos[posto].add_funcionario(nome, imagem)
+            postos[posto]._notify()
         logger.info("Produção INICIADA.")
 
 
@@ -216,10 +222,18 @@ class Posto:
         self.BS_posterior: Optional[float] = None
         self.BD_backup: Optional[float] = None
 
+        self.contador_produtos = 0
+
         self.mqttc = mqttc
         self.on_change = None # callback opcional
         self._last_update = time.time()
 
+        self.funcionario_nome = None
+        self.funcionario_imagem = None
+
+    def add_funcionario(self, nome, imagem):
+        self.funcionario_nome = nome
+        self.funcionario_imagem = imagem  
     # ------------------------------------------------------------------
     # Registro de linha (início de montagem)
     # ------------------------------------------------------------------
@@ -278,18 +292,16 @@ class Posto:
             self.BS_posterior = time.perf_counter()
             transporte = round(self.BS_posterior - self.BD_backup, 2)
             self.atualizar_tempo(self.produto_atual, "tempo_transferencia", transporte)
-            self._notify()
         elif self.n_posto == ultimo_posto_bios:
             self.atualizar_tempo(self.produto_atual, "tempo_transferencia", 0.0)
-            self._notify()
         else:
             logger.error("[%s] Posto inválido para transporte.", self.nome)
             return
 
         tempo_ciclo = self.calcular_tempo_ciclo()
+        self._notify()
         if tempo_ciclo is not None:
             self.atualizar_tempo(self.produto_atual, "tempo_ciclo", tempo_ciclo)
-            self._notify()
 
     def calcular_tempo_ciclo(self, idx: Optional[int] = None) -> Optional[float]:
         if self.df_historico.empty:
@@ -320,6 +332,7 @@ class Posto:
             return None
 
         tempo_ciclo = round(sum(valores), 2)
+        self.contador_produtos += 1
         return tempo_ciclo
 
     # ------------------------------------------------------------------
@@ -345,6 +358,7 @@ class Posto:
             if payload == "BT1" and self.maquina_estado == 1:
                 logger.info("[%s] - ESTADO 2 - BT1", self.nome)
                 preparo = round(self.timestamp["BT1"] - self.timestamp["BS"], 2)
+                self.tratamento_palete(self.palete_atual)
                 self.atualizar_tempo(self.produto_atual, "tempo_preparo", preparo)
                 self.maquina_estado_anterior = self.maquina_estado
                 self.maquina_estado = 2
@@ -386,7 +400,7 @@ class Posto:
                 return
 
         # Não é um timestamp: pode ser leitura NFC de palete
-        if verifica_palete_nfc(payload):
+        elif verifica_palete_nfc(payload):
             palete_lido = cartao_palete.get(payload)
             if palete_lido is None:
                 logger.warning("[%s] Cartão %s não mapeado em cartao_palete.", self.nome, payload)
@@ -457,14 +471,18 @@ class Posto:
             id=self.id_posto,
             state=self._state_enum(),
             produto=self.produto_atual,
+            modelo="Proxy - CPD",
             palete=self.palete_atual,
+            n_produtos=self.contador_produtos,
             arrival=getv("arrival_time"),
             t_preparo=getv("tempo_preparo"),
             t_montagem=getv("tempo_montagem"),
             t_espera=getv("tempo_espera"),
             t_transf=getv("tempo_transferencia"),
             t_ciclo=getv("tempo_ciclo"),
-            last_update_ts=time.time()
+            last_update_ts=time.time(),
+            funcionario_nome = self.funcionario_nome,
+            funcionario_imagem = self.funcionario_imagem
         )
 
 

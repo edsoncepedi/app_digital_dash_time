@@ -72,6 +72,28 @@ def consulta_produto_assoc(palete_lido):
             return 'Erro'
     return None
 
+def consulta_funcionario_posto(nome_posto: str):
+    db = Conectar_DB('funcionarios')  # ou o nome do seu banco onde estão as tabelas
+    if not verifica_conexao_banco(db):
+        return None
+
+    # JOIN entre posto e funcionario para pegar nome + imagem
+    sql = f"""
+        SELECT f.nome, f.imagem_path
+        FROM posto p
+        LEFT JOIN funcionario f ON f.id = p.funcionario_id
+        WHERE p.nome = '{nome_posto}'"""
+
+    df = Leitura_DB(db, sql)
+
+    if df is None or df.empty:
+        # nenhum funcionário associado a esse posto
+        return None
+
+    linha = df.iloc[0]
+    return linha["nome"], linha["imagem_path"]
+    
+
 def consulta_paletes():
     db = Conectar_DB('paletes')
     if verifica_conexao_banco(db):

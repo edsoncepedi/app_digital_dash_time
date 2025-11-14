@@ -41,16 +41,14 @@ def create_app():
     # Inicialização de extensões
     mqtt = Mqtt()
     socketio = SocketIO(app, cors_allowed_origins="*")
+    inicializar_postos(mqtt)
+    supervisor = PostoSupervisor(classes.postos, socketio, mqtt)
 
     # Registro de funcionalidades
-    configurar_rotas(app, mqtt, socketio)
+    configurar_rotas(app, mqtt, socketio, supervisor)
     rotas_funcionarios(app, mqtt, socketio)
     configurar_mqtt_handlers(mqtt, socketio)
     configurar_socketio_handlers(socketio)
-    inicializar_postos(mqtt)
-
-    supervisor = PostoSupervisor(classes.postos, socketio, mqtt)
-
     register_socketio_handlers(socketio, supervisor)
 
     mqtt.init_app(app)
