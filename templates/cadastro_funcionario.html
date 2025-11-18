@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Cadastro de Funcionário</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
     <style>
         :root {
             --bg-body: #0b1020;
@@ -403,15 +404,16 @@
         }
 
         .pill {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 3px 8px;
-            border-radius: 999px;
-            font-size: 0.7rem;
-            background: #020617;
-            color: #e5e7eb;
-            border: 1px solid #4b5563;
+                padding: 6px 14px;
+                border-radius: 999px;
+                background: #15171c;
+                border: 1px solid #3b3f4a;
+                color: #fff;
+                font-size: 0.85rem;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                white-space: nowrap;   /* ← impede qualquer quebra de linha */
         }
     </style>
 </head>
@@ -539,7 +541,7 @@
                         <tbody>
                             {% for f in funcionarios %}
                             <tr>
-                                <td class="col-id">{{ f.id }}</td>
+                                <td class="col-id">{{ loop.index }}</td>
                                 <td>
                                     {% if f.imagem_path %}
                                         <img src="/{{ f.imagem_path }}" alt="{{ f.nome }}" class="avatar">
@@ -563,8 +565,11 @@
                                 </td>
                                 <td class="col-acoes">
                                     <form action="{{ url_for('deletar_funcionario', func_id=f.id) }}"
-                                          method="POST"
-                                          onsubmit="return confirm('Tem certeza que deseja excluir este funcionário?');">
+                                        method="POST"
+                                        class="form-excluir-func"
+                                        data-nome="{{ f.nome }}">
+                                        <!-- Campo oculto para enviar a senha -->
+                                        <input type="hidden" name="senha_confirmacao">
                                         <button type="submit" class="btn btn-danger">
                                             Excluir
                                         </button>
@@ -583,5 +588,38 @@
         </div>
     </div>
 </div>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const forms = document.querySelectorAll('.form-excluir-func');
+
+    forms.forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();  // impede envio automático
+
+        const nome = form.dataset.nome || 'este funcionário';
+
+        const senha = prompt(
+          `Para excluir ${nome}, digite a senha de administrador:`
+        );
+
+        // Se o usuário apertar "Cancelar"
+        if (senha === null) {
+          return;
+        }
+
+        if (senha.trim() === '') {
+          alert('Senha não pode ser vazia.');
+          return;
+        }
+
+        // Preenche o campo hidden com a senha digitada
+        form.querySelector('input[name="senha_confirmacao"]').value = senha;
+
+        // Agora sim envia o formulário
+        form.submit();
+      });
+    });
+  });
+</script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 
-from flask import render_template, request, jsonify, url_for, flash, redirect
+from flask import current_app, render_template, request, jsonify, url_for, flash, redirect
 from auxiliares.banco_post import Conectar_DB
 from auxiliares.associacao import inicializa_funcionario
 from sqlalchemy.orm import sessionmaker
@@ -74,24 +74,33 @@ def rotas_funcionarios(app, mqttc, socketio):
 
         return render_template('cadastro_funcionario.html', funcionarios=funcionarios)
 
-    @app.route('/deletar_funcionario/<int:func_id>', methods=['POST'])
+
+    @app.route("/deletar_funcionario/<int:func_id>", methods=["POST"])
     def deletar_funcionario(func_id):
+        senha = request.form.get("senha_confirmacao", "")
+
+        if senha != current_app.config["ADMIN_DELETE_PASSWORD"]:
+            flash("Senha de exclusão inválida.", "error")
+            return redirect(url_for("cadastro_funcionario"))
+
+        # 🔴 se chegou aqui, senha está correta → pode excluir
         session = SessionLocal()
         try:
-            funcionario = session.query(Funcionario).get(func_id)
-            if funcionario:
-                session.delete(funcionario)
-                session.commit()
-                flash('Funcionário deletado com sucesso!', 'success')
-            else:
-                flash('Funcionário não encontrado.', 'error')
+            func = session.query(Funcionario).get(func_id)
+            if not func:
+                flash("Funcionário não encontrado.", "error")
+                return redirect(url_for("cadastro_funcionario"))
+
+            session.delete(func)
+            session.commit()
+            flash("Funcionário excluído com sucesso.", "success")
         except Exception as e:
             session.rollback()
-            flash(f'Erro ao deletar funcionário: {e}', 'error')
+            flash("Erro ao excluir funcionário.", "error")
         finally:
             session.close()
 
-        return redirect(url_for('cadastro_funcionario'))
+        return redirect(url_for("cadastro_funcionario"))
 
     @app.route('/rfid__checkin_posto', methods=['POST'])
     def rfid_event():
@@ -147,8 +156,8 @@ def rotas_funcionarios(app, mqttc, socketio):
                     "status": "forbidden_posto",
                     "posto": posto_nome,
                     "message": (
-                        f"Funcionário '{func.nome}' não está autorizado "
-                        f"a operar no posto '{posto_nome}'."
+                    f"Funcionário '{func.nome}' não está autorizado "
+                    f"a operar no posto '{posto_nome}'."
                     ),
                     "autorizado": False,
                     "funcionario": {
@@ -170,8 +179,8 @@ def rotas_funcionarios(app, mqttc, socketio):
                     "nome": func.nome,
                     "rfid_tag": func.rfid_tag,
                     "horas_trabalho": float(func.horas_trabalho)
+                    }
                 }
-            }
             return jsonify(resposta), 200
 
         finally:
