@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Cadastro de Funcionário</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/funcionarios.css') }}">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">Funcionários</div>
+    <nav class="nav">
+      <a href="/supervisorio">Supervisório</a>
+      <a href="/cadastro_funcionario">Funcionários</a>
+      <a href="/controle">Painel de Controle</a>
+    </nav>
+  </div>
+</header>
+
+<div class="page-wrapper">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Cadastro de Funcionários</h1>
+            <p class="page-subtitle">Cadastre operadores, defina suas horas de trabalho e gerencie o time.</p>
+        </div>
+        <span class="badge">Painel administrativo</span>
+    </div>
+
+    <!-- Mensagens flash -->
+    <div class="flash-wrapper">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'success' if category == 'success' else 'error' }}">
+                  <span class="alert-dot"></span>
+                  <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="layout">
+        <!-- Card: Formulário -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Novo funcionário</h2>
+                    <p class="card-subtitle">Preencha os dados abaixo para cadastrar um novo operador.</p>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <form action="{{ url_for('cadastro_funcionario') }}" method="POST" enctype="multipart/form-data">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="nome">Nome do operador</label>
+                        <input type="text" id="nome" name="nome" required placeholder="Ex: João Silva">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="data_nascimento">Data de nascimento</label>
+                        <input type="date" id="data_nascimento" name="data_nascimento" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="horas_trabalho">Horas de trabalho (fixo)</label>
+                        <input type="number" id="horas_trabalho" name="horas_trabalho" step="0.1" value="8.0">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="imagem">Imagem do operador</label>
+                        <input type="file" id="imagem" name="imagem" accept=".jpg,.jpeg,.png">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rfid_tag">Tag RFID do operador</label>
+                        <input
+                            type="text"
+                            id="rfid_tag"
+                            name="rfid_tag"
+                            placeholder="Ex: 584197450694"
+                            pattern="\d*"
+                            maxlength="32"
+                            required>
+                    </div>
+                </div>
+
+                <div class="form-footer">
+                    <button type="submit" class="btn btn-primary">
+                        <span>Salvar funcionário</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Card: Lista de funcionários -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Funcionários cadastrados</h2>
+                    <p class="card-subtitle">
+                        Visualize os operadores já cadastrados e gerencie exclusões quando necessário.
+                    </p>
+                </div>
+                {% if funcionarios and funcionarios|length > 0 %}
+                    <span class="pill">{{ funcionarios|length }} cadastrados</span>
+                {% endif %}
+            </div>
+
+            <div class="divider"></div>
+
+            {% if funcionarios and funcionarios|length > 0 %}
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="col-id">ID</th>
+                                <th>Foto</th>
+                                <th>Nome</th>
+                                <th>Data nasc.</th>
+                                <th>Horas trab.</th>
+                                <th class="col-rfid">RFID</th>
+                                <th class="col-acoes">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for f in funcionarios %}
+                            <tr>
+                                <td class="col-id">{{ loop.index }}</td>
+                                <td>
+                                    {% if f.imagem_path %}
+                                        <img src="/{{ f.imagem_path }}" alt="{{ f.nome }}" class="avatar">
+                                    {% else %}
+                                        <div class="avatar-placeholder">
+                                            {{ f.nome[0] if f.nome else '?' }}
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td>{{ f.nome }}</td>
+                                <td>
+                                    {% if f.data_nascimento %}
+                                        {{ f.data_nascimento.strftime('%d/%m/%Y') }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>{{ f.horas_trabalho }}</td>
+                                <td class="col-rfid">
+                                    {{ f.rfid_tag }}
+                                </td>
+                                <td class="col-acoes">
+                                    <form action="{{ url_for('deletar_funcionario', func_id=f.id) }}"
+                                        method="POST"
+                                        class="form-excluir-func"
+                                        data-nome="{{ f.nome }}">
+                                        <!-- Campo oculto para enviar a senha -->
+                                        <input type="hidden" name="senha_confirmacao">
+                                        <button type="submit" class="btn btn-danger">
+                                            Excluir
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    Nenhum funcionário cadastrado ainda. Use o formulário ao lado para adicionar o primeiro.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='scripts/funcionarios.js') }}" defer></script>
+</body>
+</html>

@@ -30,7 +30,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
     def associacao():
         sleep(1)
         if not tem_cliente_associacao():
-            return render_template("index.html")
+            return render_template("assoc.html")
         else:
             return "Já existe um Cliente de Associação Conectado!!!"
 

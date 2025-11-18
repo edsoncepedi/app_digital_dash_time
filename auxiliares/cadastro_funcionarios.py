@@ -72,7 +72,7 @@ def rotas_funcionarios(app, mqttc, socketio):
         funcionarios = session.query(Funcionario).order_by(Funcionario.id).all()
         session.close()
 
-        return render_template('cadastro_funcionario.html', funcionarios=funcionarios)
+        return render_template('funcionarios.html', funcionarios=funcionarios)
 
 
     @app.route("/deletar_funcionario/<int:func_id>", methods=["POST"])
