@@ -14,3 +14,10 @@ def register_socketio_handlers(socketio, supervisor):
     @socketio.on("posto/command")
     def posto_command(data):
         supervisor.command(data["posto"], data["cmd"], **(data.get("args") or {}))
+
+    @socketio.on("global/request_sync")
+    def handle_global_sync():
+        # Pede ao supervisor o estado atual de tudo
+        dados = supervisor.get_global_status()
+        # Devolve apenas para quem pediu (request.sid)
+        socketio.emit("global/sync_data", dados, room=request.sid)

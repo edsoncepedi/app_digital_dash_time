@@ -26,7 +26,7 @@ def front_mqtt_assoc(message, socketio):
             else:
                 socketio.emit('aviso_ao_operador_assoc', {'mensagem': "Produção não iniciada. Retire o palete do Posto 0.", 'cor': "#dc3545", 'tempo': 3000})
                 return
-        elif payload in ["BS", "BT1", "BT2","BD"]:
+        elif payload in ["BS", "BT1", "BT2", "BD"]:
             return
         else:
             socketio.emit('aviso_ao_operador_assoc', {'mensagem': "Achou que eu tava brincando é?", 'cor': "#2fcce0", 'tempo': 3000})

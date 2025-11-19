@@ -1,7 +1,7 @@
 /* ===================== CONFIG ===================== */
 window.NUM_POSTOS = window.NUM_POSTOS ?? 3;
 let meta_prod = 100;
-let currentProd = 0; // guarda produção atual para projeção
+let currentProd = 0; // guarda produção atual
 
 // Mapeamento DINÂMICO: estado da máquina -> título do card
 // Estados esperados: 0=IDLE, 1=BS, 2=BT1, 3=BT2, 4=BD
@@ -53,15 +53,7 @@ function buildCard(n){
       </div>
     </div>
 
-    <!--
-    <div class="toolbar">
-      <button class="chip btn" onclick="cmd(${n}, 'buzzer', {on:true})">Buzzer ON</button>
-      <button class="chip btn" onclick="cmd(${n}, 'buzzer', {on:false})">Buzzer OFF</button>
-      <button class="chip btn" onclick="cmd(${n}, 'light', {color:'green'})">Luz Verde</button>
-      <button class="chip btn" onclick="cmd(${n}, 'light', {color:'red'})">Luz Vermelha</button>
-    </div>
-    -->
-  `;
+    `;
   return el;
 }
 
@@ -80,7 +72,45 @@ function joinAll(){
     socket.emit('join_posto', { posto: `posto_${n}` });
   }
 }
-socket.on('connect', joinAll);
+
+// SINCRONIZAÇÃO GLOBAL E DOS POSTOS
+socket.on('connect', () => {
+    joinAll(); 
+    console.log("Conectado. Solicitando sincronização global...");
+    socket.emit('global/request_sync'); 
+});
+
+socket.on('global/sync_data', (data) => {
+    console.log("Dados globais recebidos:", data);
+
+    // A. Sincronizar Meta e Produção Atual
+    if(data.meta !== undefined) meta_prod = data.meta;
+    
+    if(data.producao_atual !== undefined) {
+        setKpiProducao(data.producao_atual, meta_prod);
+    }
+    
+    // B. Sincronizar Projeção (Valor já calculado pelo Backend)
+    if(data.projecao !== undefined) {
+        setKpiProjecao(data.projecao);
+    }
+
+    // C. Sincronizar Order ID (Opcional)
+    if(data.order_id) {
+        document.getElementById("kpi-order").textContent = data.order_id;
+    }
+
+    // D. Sincronizar Cronômetro
+    if (data.timer_ms !== undefined) {
+        timer.set(data.timer_ms); 
+    }
+    
+    if (data.timer_running === true) {
+        timer.start(); 
+    } else {
+        timer.stop();
+    }
+});
 
 // Atualização de UI a partir de um snapshot/evento
 function updateFromSnapshot(s){
@@ -89,10 +119,9 @@ function updateFromSnapshot(s){
   const n_number = Number(n);
   const numPostos = Number(window.NUM_POSTOS) || 0;
 
-  // se for o último posto, atualiza KPI de produção
-  if (n_number === numPostos - 1){
-    setKpiProducao(s.n_produtos, meta_prod);
-  }
+  // NOTA: A atualização de produção global não é mais feita aqui
+  // ela é feita pelo evento 'producao/update' que o backend emite.
+  // if (n_number === numPostos - 1){ setKpiProducao(s.n_produtos, meta_prod); }
 
   // Título dinâmico (Montagem/Preparo/Espera) a partir do ESTADO
   const titulo = titleFor(s.state);
@@ -153,6 +182,14 @@ socket.on('producao/control', data => {
   meta_prod = data.meta_producao;
   setKpiProducao(currentProd, meta_prod);
 });
+
+// NOVO EVENTO: Recebe atualização da produção e projeção já calculada do backend
+socket.on('producao/update', (data) => {
+    meta_prod = data.meta;
+    setKpiProducao(data.atual, data.meta);
+    setKpiProjecao(data.projecao); 
+});
+
 
 // Comandos → backend → Supervisor → Posto → MQTT
 function cmd(n, command, args={}){
@@ -247,44 +284,23 @@ socket.on("timer/control", (msg) => {
   if (msg.action === "set")   timer.set(msg.ms || 0);
 });
 
-/* ========= KPI Produção + Projeção ========= */
+/* ========= KPI Produção + Projeção (Backend-Driven) ========= */
 
-function atualizarProjecao(atual, meta){
+// NOVO MÉTODO: Apenas exibe o texto da projeção que veio do Python
+function setKpiProjecao(texto) {
   const projEl = document.getElementById("kpi-proj");
-  if (!projEl) return;
-
-  // precisa ter pelo menos 1 peça e algum tempo decorrido
-  if (!atual || elapsedMs <= 0 || !meta || meta <= 0){
-    projEl.textContent = "--";
-    return;
-  }
-
-  // tempo médio por peça (ms/peça)
-  const tempoPorPeca = elapsedMs / atual;
-
-  // tempo TOTAL estimado para produzir "meta" peças
-  const tempoTotalMs = tempoPorPeca * meta;
-
-  // aqui vou mostrar o TEMPO TOTAL, como no seu exemplo 13 min 20 s
-  const totalSeconds = Math.round(tempoTotalMs / 1000);
-  const horas  = Math.floor(totalSeconds / 3600);
-  const minutos = Math.floor((totalSeconds % 3600) / 60);
-  const segundos = totalSeconds % 60;
-
-  let texto = "";
-  if (horas > 0){
-    texto += `${horas} h `;
-  }
-  texto += `${minutos} min ${segundos} s`;
-
-  projEl.textContent = texto;
+  if (projEl) projEl.textContent = texto || "--";
 }
 
+// MÉTODO ATUALIZADO: Não chama mais a lógica de cálculo local
 function setKpiProducao(atual, meta) {
   currentProd = atual;
   document.getElementById("kpi-prod").textContent = `${atual}/${meta}`;
-  atualizarProjecao(atual, meta);
+  // A projeção será atualizada via 'global/sync_data' ou 'producao/update'
 }
+
+// Lógica de cálculo 'function atualizarProjecao(atual, meta)' REMOVIDA
+// para centralizar no backend.
 
 function mostrarPopup(mensagem, cor = '#333', duracao_ms = 3000) {
             const popup = document.getElementById('popup-aviso');

@@ -12,6 +12,7 @@ import pandas as pd
 from auxiliares.configuracoes import ultimo_posto_bios, cartao_palete
 from auxiliares.utils import verifica_palete_nfc, verifica_cod_produto
 from auxiliares.banco_post import inserir_dados, consulta_funcionario_posto  # noqa: F401  # mantido para uso futuro
+from auxiliares.utils import imprime_qrcode, gera_codigo_produto
 
 from enum import Enum
 from dataclasses import dataclass
@@ -230,6 +231,14 @@ class Posto:
 
         self.funcionario_nome = None
         self.funcionario_imagem = None
+    
+    def insert_produto(self, produto):
+        if verifica_cod_produto(produto):
+            self.produto_atual = produto
+            self._notify()
+        else:
+            print(f"[ERRO] - Erro ao tentar associar produto ao posto {self.id_posto}")
+
 
     def add_funcionario(self, nome, imagem):
         self.funcionario_nome = nome
@@ -358,7 +367,6 @@ class Posto:
             if payload == "BT1" and self.maquina_estado == 1:
                 logger.info("[%s] - ESTADO 2 - BT1", self.nome)
                 preparo = round(self.timestamp["BT1"] - self.timestamp["BS"], 2)
-                self.tratamento_palete(self.palete_atual)
                 self.atualizar_tempo(self.produto_atual, "tempo_preparo", preparo)
                 self.maquina_estado_anterior = self.maquina_estado
                 self.maquina_estado = 2

@@ -165,23 +165,22 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
                 #classes.inicializar_postos(mqttc)
                 classes.inicia_producao()
                 mqttc.publish(f"ControleProducao_DD", f"Start")
-                socketio.emit("timer/control", {"action": "restart"})
-                socketio.emit("timer/control", {"action": "start"})
-                socketio.emit("producao/control", {"meta_producao": meta_producao})
-                supervisor.injeta_meta_producao(int(meta_producao))
+
+                supervisor.resetar_timer()
+                supervisor.iniciar_timer(meta=int(meta_producao))
+
                 #Retorna para a página o sucesso da inicialização do sistema
                 return jsonify(status='sucesso', mensagem='O Sistema foi inciado: Produção ON'), 200
             
             elif comando == 'Restart':
-                # Lógica para reiniciar o sistema
-                socketio.emit("timer/control", {"action": "restart"})
+                supervisor.resetar_timer()
                 reiniciar_produtos()
                 reiniciar_sistema(debug=debug_mode)
                 return jsonify(status='sucesso', mensagem='Sistema reiniciado.'), 200
             
             elif comando == 'Stop':
                 # Lógica para reiniciar produtos
-                socketio.emit("timer/control", {"action": "stop"})
+                supervisor.parar_timer()
                 classes.encerra_producao()
                 return jsonify(status='sucesso', mensagem='Produção encerrada'), 200
             
@@ -221,6 +220,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
                 memoriza_produto(produto)
 
                 classes.associacoes.associa(palete, produto)
+                classes.postos['posto_0'].insert_produto(produto)
                 mqttc.publish(f"rastreio_nfc/esp32/posto_0/dispositivo", "BT1")
                 #classes.adicionarProduto(produto)
 

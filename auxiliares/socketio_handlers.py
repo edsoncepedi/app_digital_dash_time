@@ -18,7 +18,7 @@ def configurar_socketio_handlers(socketio):
     # Super função que é chamada assim que um cliente se conecta
     @socketio.on('connect')
     def handle_connect():
-        print("Cliente conectado via WebSocket.")
+        pass
 
     @socketio.on('pagina_associacao_connect')
     def pagina_associacao_connect():
