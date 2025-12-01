@@ -1,0 +1,107 @@
+body{
+    background:#1f2226;
+    color:white;
+    font-family: 'Segoe UI', sans-serif;
+    margin:0;
+    padding:0;
+}
+
+/* ==================== CABEÇALHO ==================== */
+
+#top-header{
+    text-align:center;
+    padding:30px 0 10px;
+}
+
+#top-header h1{
+    font-size:42px;
+    margin:0;
+}
+
+#top-header h2{
+    margin:6px 0 25px;
+    font-size:24px;
+    color:#74FF95;
+}
+
+/* ==================== INFORMAÇÕES DO PRODUTO ==================== */
+
+#info-produto{
+    display:flex;
+    justify-content:center;
+    gap:50px;
+    font-size:19px;
+    margin-bottom:30px;
+}
+
+/* ==================== GRID PRINCIPAL ==================== */
+
+#main-layout{
+    width:90%;
+    margin:auto;
+    display:grid;
+    grid-template-columns:260px 1fr 300px;
+    gap:30px;
+}
+
+/* ==================== OPERADOR ==================== */
+
+#operador-card{
+    background:#2c3035;
+    border-radius:18px;
+    padding:25px;
+    text-align:center;
+}
+
+#op-foto{
+    width:130px;
+    height:130px;
+    border-radius:50%;
+    background:#616161;
+    margin:auto;
+    background-size:cover;
+    background-position:center;
+    font-size:50px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.label{ font-size:16px; opacity:.6; margin-top:15px; }
+.value{ font-size:22px; font-weight:600; }
+
+/* ==================== PROGRESSO CIRCULAR ==================== */
+
+#progresso-area{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.ring{
+    width:210px;
+    height:210px;
+    border-radius:50%;
+    border:12px solid #9fff95;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:46px;
+    color:#d6ffd7;
+}
+
+/* ==================== LOG ==================== */
+
+#log-area{
+    background:#2c3035;
+    border-radius:18px;
+    padding:20px;
+    overflow:auto;
+    height:260px;
+}
+
+#log-box div{
+    padding:4px 0;
+    border-bottom:1px solid #3b4046;
+    font-size:15px;
+}

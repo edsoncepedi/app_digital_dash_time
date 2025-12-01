@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Posto {{ posto_id }}</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/posto.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script> const POSTO_ID = "{{ posto_id }}"; </script>
+</head>
+
+<body>
+
+<header id="top-header">
+    <h1>Posto {{ posto_id }}</h1>
+    <h2 id="titulo-etapa">--</h2>
+</header>
+
+<section id="info-produto">
+    <div><b>Produto:</b> <span id="produto">--</span></div>
+    <div><b>Modelo:</b> <span id="modelo">--</span></div>
+    <div><b>Estado:</b> <span id="estado">--</span></div>
+</section>
+
+<div id="main-layout">
+
+    <!-- Operador -->
+    <aside id="operador-card">
+        <div id="op-foto"></div>
+        <p class="label">Operador:</p>
+        <p id="op-nome" class="value">Não alocado</p>
+    </aside>
+
+    <!-- Progresso -->
+    <div id="progresso-area">
+        <div class="ring">
+            <div id="mats-texto">--%</div>
+        </div>
+    </div>
+
+    <!-- Log -->
+    <aside id="log-area">
+        <h3>Log</h3>
+        <div id="log-box"></div>
+    </aside>
+
+</div>
+
+<script src="{{ url_for('static', filename='scripts/posto.js') }}"></script>
+</body>
+
+</html>

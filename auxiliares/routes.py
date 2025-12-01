@@ -25,15 +25,6 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
     def ping():
         return jsonify({"status": "ok"}), 200
 
-    #Rota para interface de associção
-    @app.route("/associacao")
-    def associacao():
-        sleep(1)
-        if not tem_cliente_associacao():
-            return render_template("assoc.html")
-        else:
-            return "Já existe um Cliente de Associação Conectado!!!"
-
     @socketio.on('resposta_estado_aguardando')
     def receber_resposta_estado(data):
         global resposta_recebida
@@ -109,7 +100,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
 
                 # 5) Confirma tudo
                 session.commit()
-                socketio.emit('aviso_lista_func', {'mensagem': "Alocação de operadores atualizada com sucesso!", 'cor': "#00a80e", 'tempo': 1000})
+                socketio.emit('aviso_lista_func', {'mensagem': "Alocação de operadores atualizada com sucesso!", 'cor': "#74FF95", 'tempo': 1000})
                 sleep(1)
 
             except Exception as e:
@@ -247,3 +238,15 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
                 return f"ERRO: Associação não realizada : {e}"
         else:
             return f"ERRO: PALETE JÁ VINCULADO"
+
+    @app.route("/posto/<int:posto_id>")
+    def posto_operador(posto_id):
+        if posto_id >= len(classes.postos):
+            return "Posto inválido.", 404
+        elif posto_id == 0:
+            sleep(1)
+            if not tem_cliente_associacao():
+                return render_template("posto0.html", posto_id=posto_id)
+            else:
+                return "Já existe um Cliente de Associação Conectado!!!"
+        return render_template("posto.html", posto_id=posto_id)

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Posto {{ posto_id }}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/posto0.css') }}">
+</head>
+
+<body>
+<script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+
+<div class="my-col" style="display: flex; align-items: center; gap: 10px; font-weight: bold; padding-left: 20px;padding-top: 20px;">
+    <div>Produção: </div>
+    <!-- Elemento onde o status será exibido via JavaScript -->
+    <div id="status-indicador">Verificando...</div>
+</div>
+
+<header id="top-header">
+    <h1>Posto {{ posto_id }}</h1>
+    <h2 id="titulo-etapa">--</h2>
+</header>
+
+<section id="info-produto">
+    <div><b>Produto:</b> <span id="produto">--</span></div>
+    <div><b>Modelo:</b> <span id="modelo">--</span></div>
+    <div><b>Estado:</b> <span id="estado">--</span></div>
+</section>
+
+<div id="main-layout">
+
+    <!-- Operador -->
+    <aside id="operador-card">
+        <div id="op-foto"></div>
+        <p class="label">Operador:</p>
+        <p id="op-nome" class="value">Não alocado</p>
+    </aside>
+
+    <!-- Progresso -->
+    <div id="progresso-area">
+        <div class="ring">
+            <div id="mats-texto">--%</div>
+        </div>
+    </div>
+
+    <!-- Log -->
+    <aside id="log-area">
+        <h3>Log</h3>
+        <div id="log-box"></div>
+    </aside>
+</div>
+<div class="assoc-container">
+
+    <!-- Título da página -->
+    <h5 class="titulo-assoc">Associação de Produtos</h5>
+
+    <!-- Popup -->
+    <div id="popup-aviso" style="
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 20px 35px;
+        border-radius: 8px;
+        color: white;
+        font-weight: bold;
+        font-size: 18px;
+        z-index: 10000;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        max-width: 80%;
+        text-align: center;
+    "></div>
+
+    <!-- Forms lado a lado -->
+    <div class="row">
+        <div class="col">
+            <label for="produto" class="form-label"><h3>Código do Produto</h3></label>
+            <input type="text" class="form-control" id="produto" placeholder="Aguardando Produto" oninput="checkAndAdvance(this, 'palete')" readonly>
+        </div>
+
+        <div class="col">
+            <label for="palete" class="form-label"><h3>Código do Palete</h3></label>
+            <input type="text" class="form-control" id="palete" placeholder="Aguardando Palete" oninput="checkAndAdvance(this, 'produto')" readonly>
+        </div>
+    </div>
+
+    <!-- Resposta do sistema -->
+    <div id="resposta" class="resultado-assoc"></div>
+</div>
+<script src="{{ url_for('static', filename='scripts/assoc.js') }}" defer></script>
+</body>
+
+</html>

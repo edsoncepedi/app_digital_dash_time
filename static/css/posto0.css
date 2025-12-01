@@ -1,0 +1,190 @@
+body{
+    background:#1f2226;
+    color:white;
+    font-family: 'Segoe UI', sans-serif;
+    margin:0;
+    padding:0;
+}
+
+/* ==================== CABEÇALHO ==================== */
+
+#top-header{
+    text-align:center;
+    padding:30px 0 10px;
+}
+
+#top-header h1{
+    font-size:42px;
+    margin:0;
+}
+
+#top-header h2{
+    margin:6px 0 25px;
+    font-size:24px;
+    color:#74FF95;
+}
+
+/* ==================== INFORMAÇÕES DO PRODUTO ==================== */
+
+#info-produto{
+    display:flex;
+    justify-content:center;
+    gap:50px;
+    font-size:19px;
+    margin-bottom:30px;
+}
+
+/* ==================== GRID PRINCIPAL ==================== */
+
+#main-layout{
+    width:90%;
+    margin:auto;
+    display:grid;
+    grid-template-columns:260px 1fr 300px;
+    gap:30px;
+}
+
+/* ==================== OPERADOR ==================== */
+
+#operador-card{
+    background:#2c3035;
+    border-radius:18px;
+    padding:25px;
+    text-align:center;
+}
+
+#op-foto{
+    width:130px;
+    height:130px;
+    border-radius:50%;
+    background:#616161;
+    margin:auto;
+    background-size:cover;
+    background-position:center;
+    font-size:50px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.label{ font-size:16px; opacity:.6; margin-top:15px; }
+.value{ font-size:22px; font-weight:600; }
+
+/* ==================== PROGRESSO CIRCULAR ==================== */
+
+#progresso-area{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.ring{
+    width:210px;
+    height:210px;
+    border-radius:50%;
+    border:12px solid #9fff95;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:46px;
+    color:#d6ffd7;
+}
+
+/* ==================== LOG ==================== */
+
+#log-area{
+    background:#2c3035;
+    border-radius:18px;
+    padding:20px;
+    overflow:auto;
+    height:260px;
+}
+
+#log-box div{
+    padding:4px 0;
+    border-bottom:1px solid #3b4046;
+    font-size:15px;
+}
+
+/* ==================== SUBSTITUIÇÃO DO BOOTSTRAP ==================== */
+
+/* Label semelhante ao Bootstrap */
+.form-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+/* Input semelhante ao Bootstrap */
+.form-control {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 18px;
+    color: white;
+    background: #2c3035;
+    border: 1px solid #555;
+    border-radius: 10px;
+    outline: none;
+    transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+/* Efeito de foco */
+.form-control:focus {
+    border-color: #74FF95;
+    box-shadow: 0 0 6px rgba(116, 255, 149, 0.5);
+}
+
+/* Placeholder */
+.form-control::placeholder {
+    color: #aaa;
+}
+
+/* Container central */
+.assoc-container {
+    width: 70%;
+    margin: 0 auto;
+    padding-top: 40px;
+    text-align: center;
+}
+
+/* Título */
+.titulo-assoc {
+    font-size: 32px;
+    margin-bottom: 40px;
+    margin-top: 0;
+    padding: 0;
+}
+
+/* Layout dos forms (substitui bootstrap) */
+.row {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-bottom: 40px;
+}
+
+.col {
+    flex: 1;
+    min-width: 250px;
+}
+
+/* Resultado */
+.resultado-assoc {
+    margin-top: 60px;
+    font-size: 26px;
+    font-weight: bold;
+    color: green;
+}
+
+.my-row {
+    display: flex;
+    align-items: center;   /* alinha verticalmente */
+    gap: 10px;             /* espaço entre colunas */
+    font-size: 20px;
+}
+
+.my-col {
+    display: flex;
+    align-items: center;
+}
