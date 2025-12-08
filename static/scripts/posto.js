@@ -50,7 +50,14 @@ function updateUI(s){
 
     const foto = document.getElementById("op-foto");
     if(img){
-        foto.style.backgroundImage = `url(${img})`;
+        let url = img;
+
+        // Se vier "static/..." → força "/static/..."
+        if (!url.startsWith("/")) {
+            url = "/" + url;
+        }
+
+        foto.style.backgroundImage = `url("${url}")`;
         foto.textContent = "";
     }else{
         foto.textContent = nome[0] ?? "?";
