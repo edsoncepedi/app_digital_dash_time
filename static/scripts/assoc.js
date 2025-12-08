@@ -1,5 +1,3 @@
-const POSTO_ID = "{{ posto_id }}";
-
 // Função para validar o código do produto (prototipado como "PTT01" até "PTT30")
 function verificaCodQrPrototipo(code) {
     if (code.length === 10) {
@@ -36,12 +34,6 @@ function mostrarResposta(mensagem, cor) {
 
 // Conexão com o servidor Socket.IO
 const socket = io();
-
-socket.on("connect", () => {
-    mostrarResposta("", "green");
-    document.getElementById("produto").value = "";
-    document.getElementById("palete").value = "";
-});
 
 socket.emit('pagina_associacao_connect');
 
@@ -195,6 +187,9 @@ socket.on("disconnect", () => {
 socket.on("connect", () => {
     socket.emit("join_posto", { posto: `posto_${POSTO_ID}` });
     socket.emit("posto/request_snapshot", { posto:`posto_${POSTO_ID}` });
+    mostrarResposta("", "green");
+    document.getElementById("produto").value = "";
+    document.getElementById("palete").value = "";
     console.log("Socket.IO reconectado!");
 });
 

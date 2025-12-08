@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Posto {{ posto_id }}</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
-
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/posto0.css') }}">
+    <script> const POSTO_ID = "{{ posto_id }}"; </script>
 </head>
 
 <body>
-<script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
 
 <div class="my-col" style="display: flex; align-items: center; gap: 10px; font-weight: bold; padding-left: 20px;padding-top: 20px;">
     <div>Produção: </div>
