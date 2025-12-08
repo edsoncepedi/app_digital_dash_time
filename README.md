@@ -32,22 +32,24 @@ O **DigitalDash** é uma solução completa de IoT e software para monitoramento
 
 ## 📂 Estrutura do Projeto
 
+```text
 ├── app/
-│   ├── supervisor.py       # Lógica central de supervisão, timers e projeções
+│   ├── supervisor.py            # Lógica central de supervisão, timers e projeções
 │   └── ...
 ├── auxiliares/
-│   ├── associacao.py       # Lógica de vínculo Palete <-> Produto
-│   ├── banco_post.py       # Conexão com DB
+│   ├── associacao.py            # Lógica de vínculo Palete <-> Produto
+│   ├── banco_post.py            # Conexão com DB
 │   ├── cadastro_funcionarios.py # Rotas e lógica de CRUD de operadores
-│   ├── classes.py          # Definição das Classes (Posto, Tabela_Assoc) e Máquina de Estados
-│   ├── configuracoes.py    # Configurações globais (nº de postos, mapas de tags)
-│   ├── mqtt_handlers.py    # Roteamento de mensagens MQTT
-│   ├── routes.py           # Rotas principais do Flask (/controle, /supervisorio)
-│   └── utils.py            # Utilitários (ZPL, backups, validações)
-├── static/                 # Arquivos estáticos (CSS, JS, Imagens dos funcionários)
-├── templates/              # HTML (Jinja2)
-├── main.py                 # Ponto de entrada da aplicação
-└── .env                    # Variáveis de ambiente
+│   ├── classes.py               # Definição das Classes (Posto, Tabela_Assoc) e Máquina de Estados
+│   ├── configuracoes.py         # Configurações globais (nº de postos, mapas de tags)
+│   ├── mqtt_handlers.py         # Roteamento de mensagens MQTT
+│   ├── routes.py                # Rotas principais do Flask (/controle, /supervisorio)
+│   └── utils.py                 # Utilitários (ZPL, backups, validações)
+├── static/                      # Arquivos estáticos (CSS, JS, Imagens dos funcionários)
+├── templates/                   # HTML (Jinja2)
+├── main.py                      # Ponto de entrada da aplicação
+└── .env                         # Variáveis de ambiente
+```
 
 ## 🚀 Instalação e Configuração
 
