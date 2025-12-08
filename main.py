@@ -63,4 +63,4 @@ def create_app():
 # Execução da aplicação
 if __name__ == '__main__':
     app, socketio = create_app()
-    socketio.run(app, host='0.0.0.0', port=7000)
+    socketio.run(app, host=os.getenv("IP_EXT", "0.0.0.0"), port=int(os.getenv("PORT_EXT", 7000)))
