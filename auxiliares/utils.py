@@ -220,3 +220,32 @@ def apaga_ultimo_produto_txt():
     for i in range(len(linhas)-1):
         arquivo.write(linhas[i] + "\n")
     arquivo.close()
+
+def posto_anterior(posto_id):
+    """
+    Dado o ID de um posto, retorna o ID do posto anterior.
+    :param posto_id: String com o ID do posto atual.
+    :return: String com o ID do posto anterior ou None se não existir.
+    """
+    letras, numero = separar_topico(posto_id)
+    if letras is None or numero is None:
+        return None
+    if numero == 0:
+        return None
+    numero_anterior = numero - 1
+    return f"{letras}{numero_anterior}"
+
+def posto_proximo(posto_id):
+    """
+    Dado o ID de um posto, retorna o ID do próximo posto.
+    :param posto_id: String com o ID do posto atual.
+    :return: String com o ID do próximo posto ou None se não existir.
+    """
+    letras, numero = separar_topico(posto_id)
+    if letras is None or numero is None:
+        return None
+    numero_proximo = numero + 1
+    proximo_id = f"{letras}{numero_proximo}"
+    if proximo_id > ultimo_posto_bios():
+        return None
+    return proximo_id

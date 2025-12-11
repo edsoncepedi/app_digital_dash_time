@@ -3,7 +3,8 @@ from dataclasses import asdict
 import time
 import math # Importado para a lógica de projeção
 import auxiliares.classes as classes
-from auxiliares.utils import reiniciar_sistema
+from auxiliares.utils import reiniciar_sistema, posto_anterior, posto_proximo
+
 
 class PostoSupervisor:
     def __init__(self, postos, socketio, mqttc):
@@ -20,6 +21,7 @@ class PostoSupervisor:
 
         for p in self.postos.values():
             p.on_change = self._on_change
+            p.mudanca_estado = self.mudanca_estado
 
 # --- MÉTODOS AUXILIARES NOVOS ---
     def _get_current_time_ms(self):
@@ -48,6 +50,25 @@ class PostoSupervisor:
             texto += f"{horas} h "
         texto += f"{minutos} min {segundos} s"
         return texto
+    
+    def mudanca_estado(self, posto_id, novo_estado):
+        if posto_id == 'posto_0':
+            if novo_estado == 3: # Entrou em Espera
+                if self.postos[posto_proximo(posto_id)].get_estado() == 0: # Idle
+                    self.command(posto_id, "ativa_batedor")
+        elif posto_id == self._ultimo_posto_id():
+            if novo_estado == 3: # Entrou em Espera
+                self.command(posto_id, "ativa_batedor")
+            elif novo_estado == 0: # Entrou em Idle
+                if self.postos[posto_anterior(posto_id)].get_estado() == 3: # Espera
+                    self.command(posto_anterior(posto_id), "ativa_batedor")
+        else:
+            if novo_estado == 3: # Entrou em Espera
+                if self.postos[posto_proximo(posto_id)].get_estado() == 0: # Idle
+                    self.command(posto_id, "ativa_batedor")
+            elif novo_estado == 0: # Entrou em Idle 
+                if self.postos[posto_anterior(posto_id)].get_estado() == 3: # Espera
+                    self.command(posto_anterior(posto_id), "ativa_batedor")
 
     def _on_change(self, snap):
         d = asdict(snap) 
@@ -161,3 +182,5 @@ class PostoSupervisor:
                 p.set_buzzer(kwargs.get("on", True)) 
             elif cmd == "light": 
                 p.set_light(kwargs.get("color", "green"))
+            elif cmd == "ativa_batedor":
+                p.ativa_batedor()

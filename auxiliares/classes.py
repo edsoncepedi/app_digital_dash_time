@@ -227,6 +227,7 @@ class Posto:
 
         self.mqttc = mqttc
         self.on_change = None # callback opcional
+        self.mudanca_estado = None # callback opcional
         self._last_update = time.time()
 
         self.funcionario_nome = None
@@ -359,27 +360,21 @@ class Posto:
                     logger.info("[%s] - ESTADO 1 - BS", self.nome)
                     arrival = round(self.timestamp["BS"] - self.timestamp["BD"], 2)
                     self.inicia_montagem(arrival)
-                    self.maquina_estado_anterior = self.maquina_estado
-                    self.maquina_estado = 1
-                    self._notify()
+                    self.atualizar_estado(1)
                 return
 
             if payload == "BT1" and self.maquina_estado == 1:
                 logger.info("[%s] - ESTADO 2 - BT1", self.nome)
                 preparo = round(self.timestamp["BT1"] - self.timestamp["BS"], 2)
                 self.atualizar_tempo(self.produto_atual, "tempo_preparo", preparo)
-                self.maquina_estado_anterior = self.maquina_estado
-                self.maquina_estado = 2
-                self._notify()
+                self.atualizar_estado(2)
                 return
 
             if payload == "BT2" and self.maquina_estado == 2:
                 logger.info("[%s] - ESTADO 3 - BT2", self.nome)
                 montagem = round(self.timestamp["BT2"] - self.timestamp["BT1"], 2)
                 self.atualizar_tempo(self.produto_atual, "tempo_montagem", montagem)
-                self.maquina_estado_anterior = self.maquina_estado
-                self.maquina_estado = 3
-                self._notify()
+                self.atualizar_estado(3)
                 return
 
             if payload == "BD" and self.maquina_estado == 3:
@@ -402,9 +397,7 @@ class Posto:
                 self.produto_atual = None
                 self.palete_atual = None
                 self.BD_backup = time.perf_counter()
-                self.maquina_estado_anterior = 3
-                self.maquina_estado = 0
-                self._notify()
+                self.atualizar_estado(0)
                 return
 
         # Não é um timestamp: pode ser leitura NFC de palete
@@ -467,6 +460,15 @@ class Posto:
         # quando está pronto para BD, state=3; após BD concluído voltamos a 0
         return mapping.get(self.maquina_estado, PostoState.BD if self.maquina_estado_anterior == 3 else PostoState.IDLE)
 
+    def atualizar_estado(self, estado: int) -> None:
+        self.maquina_estado_anterior = self.maquina_estado
+        self.maquina_estado = estado
+        if callable(self.mudanca_estado):
+            try:
+                self.mudanca_estado(self.id_posto, estado)
+            except Exception:
+                pass
+        self._notify()
 
     def snapshot(self) -> PostoSnapshot:
         idx = self.df_historico.index[-1] if len(self.df_historico) else None
@@ -493,7 +495,6 @@ class Posto:
             funcionario_imagem = self.funcionario_imagem
         )
 
-
     def _notify(self):
         self._last_update = time.time()
         if callable(self.on_change):
@@ -512,6 +513,13 @@ class Posto:
             self.mqttc.publish(f"linha/{self.id_posto}/light", color.upper())
         return
 
+    def ativa_batedor(self):
+        if self.mqttc:
+            self.mqttc.publish(f"rastreio_nfc/raspberry/{self.id_posto}/sistema", "batedor")
+        return
+    
+    def get_estado(self):
+        return self.maquina_estado
 # -----------------------------------------------------------------------------
 # MQTT → Roteamento de mensagens para cada Posto
 # -----------------------------------------------------------------------------
