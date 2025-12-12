@@ -221,13 +221,17 @@ def apaga_ultimo_produto_txt():
         arquivo.write(linhas[i] + "\n")
     arquivo.close()
 
+def separar_posto(s):
+    letras, numero = s.split('_')
+    return f"{letras}_", int(numero)
+
 def posto_anterior(posto_id):
     """
     Dado o ID de um posto, retorna o ID do posto anterior.
     :param posto_id: String com o ID do posto atual.
     :return: String com o ID do posto anterior ou None se não existir.
     """
-    letras, numero = separar_topico(posto_id)
+    letras, numero = separar_posto(posto_id)
     if letras is None or numero is None:
         return None
     if numero == 0:
@@ -241,11 +245,11 @@ def posto_proximo(posto_id):
     :param posto_id: String com o ID do posto atual.
     :return: String com o ID do próximo posto ou None se não existir.
     """
-    letras, numero = separar_topico(posto_id)
+    letras, numero = separar_posto(posto_id)
     if letras is None or numero is None:
         return None
     numero_proximo = numero + 1
     proximo_id = f"{letras}{numero_proximo}"
-    if proximo_id > ultimo_posto_bios():
+    if numero_proximo > ultimo_posto_bios:
         return None
     return proximo_id

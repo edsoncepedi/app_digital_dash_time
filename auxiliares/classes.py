@@ -466,8 +466,10 @@ class Posto:
         if callable(self.mudanca_estado):
             try:
                 self.mudanca_estado(self.id_posto, estado)
-            except Exception:
-                pass
+            except Exception as e:
+                # AQUI ESTAVA O PROBLEMA: 'pass' escondia o erro.
+                # Agora vamos logar o erro para saber o que quebrou no Supervisor.
+                logger.error(f"Erro ao notificar mudança de estado no {self.id_posto}: {e}", exc_info=True)
         self._notify()
 
     def snapshot(self) -> PostoSnapshot:
