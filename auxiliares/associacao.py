@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, Integer, Date, Numeric, ForeignKey
+from sqlalchemy import Column, String, Integer, DateTime, Date, Numeric, ForeignKey
+from sqlalchemy.sql import func
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from auxiliares.banco_post import Conectar_DB
 from auxiliares.configuracoes import ultimo_posto_bios
@@ -47,6 +48,15 @@ def inicializa_funcionario():
 
         funcionario = relationship("Funcionario", lazy="joined")
 
+    class SessaoTrabalho(Base):
+        __tablename__ = 'sessoes_trabalho'
+        id = Column(Integer, primary_key=True)
+        funcionario_id = Column(Integer, ForeignKey('funcionario.id'), nullable=False)
+        posto_nome = Column(String(50), nullable=False)
+        horario_entrada = Column(DateTime, default=func.now())
+        horario_saida = Column(DateTime, nullable=True)
+        duracao_segundos = Column(Integer, nullable=True)
+
     # cria a tabela se não existir (não apaga dados existentes)
     Base.metadata.create_all(bind=engine)
     SessionLocal = sessionmaker(bind=engine)
@@ -63,5 +73,5 @@ def inicializa_funcionario():
         session.commit()
     finally:
         session.close()
-    return Funcionario, Posto
+    return Funcionario, Posto, SessaoTrabalho
 

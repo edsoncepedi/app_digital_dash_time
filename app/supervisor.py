@@ -12,6 +12,7 @@ class PostoSupervisor:
         self.socketio = socketio
         self.mqttc = mqttc
         self._snapshots = {}
+        self.operadores_ativos = {}
         
         # NOVAS VARIÁVEIS DE ESTADO GLOBAL
         self.meta_producao = 0 
@@ -24,6 +25,23 @@ class PostoSupervisor:
             p.mudanca_estado = self.mudanca_estado
 
 # --- MÉTODOS AUXILIARES NOVOS ---
+    def atualizar_operador_posto(self, posto_nome, dados_operador):
+            """
+            Atualiza o estado interno e emite o evento para o frontend.
+            Se dados_operador for None, considera-se Logout.
+            """
+            self.operadores_ativos[posto_nome] = dados_operador
+            
+            payload = {
+                "posto": posto_nome,
+                "operador": dados_operador,
+                "online": dados_operador is not None
+            }
+            
+            # Emite para a sala específica do posto e para o dashboard global
+            self.socketio.emit("posto/operador_changed", payload, room=f"posto:{posto_nome}")
+            self.socketio.emit("global/operador_update", payload)
+
     def _get_current_time_ms(self):
         tempo_ms = self.timer_accumulated * 1000
         if self.timer_running and self.timer_start_ts:
@@ -150,7 +168,8 @@ class PostoSupervisor:
             "producao_atual": prod_atual,
             "projecao": projecao_str, # <--- Enviando a projeção pronta
             "timer_ms": tempo_ms,
-            "timer_running": self.timer_running
+            "timer_running": self.timer_running,
+            "operadores": self.operadores_ativos
         }
 
     def _ultimo_posto_id(self):

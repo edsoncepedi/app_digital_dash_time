@@ -80,6 +80,12 @@ socket.on('connect', () => {
     socket.emit('global/request_sync'); 
 });
 
+// Evento disparado pelo supervisor.py quando há check-in/out
+socket.on('global/operador_update', (data) => {
+    console.log("Atualização de operador:", data);
+    atualizarInterfaceOperador(data.posto, data.operador);
+});
+
 socket.on('global/sync_data', (data) => {
     console.log("Dados globais recebidos:", data);
 
@@ -109,6 +115,12 @@ socket.on('global/sync_data', (data) => {
         timer.start(); 
     } else {
         timer.stop();
+    }
+
+    if (data.operadores) {
+        Object.keys(data.operadores).forEach(postoId => {
+            atualizarInterfaceOperador(postoId, data.operadores[postoId]);
+        });
     }
 });
 
@@ -316,3 +328,27 @@ function mostrarPopup(mensagem, cor = '#333', duracao_ms = 3000) {
 socket.on('alerta_geral', data => {
     mostrarPopup(data.mensagem, data.cor, data.tempo);
 });
+
+// Função para atualizar visualmente o operador no card
+function atualizarInterfaceOperador(postoId, operador) {
+    const n = postoId.split('_')[1];
+    const nomeEl = document.getElementById(`p${n}-op-nome`);
+    const avatarEl = document.getElementById(`p${n}-op-avatar`);
+
+    if (!nomeEl || !avatarEl) return;
+
+    if (operador) {
+        nomeEl.textContent = operador.nome;
+        if (operador.foto) {
+            avatarEl.style.backgroundImage = `url(/${operador.foto})`;
+            avatarEl.textContent = '';
+        } else {
+            avatarEl.style.backgroundImage = '';
+            avatarEl.textContent = operador.nome[0].toUpperCase();
+        }
+    } else {
+        nomeEl.textContent = 'Não alocado';
+        avatarEl.style.backgroundImage = '';
+        avatarEl.textContent = '?';
+    }
+}

@@ -15,7 +15,7 @@ import numpy as np
 
 debug_mode=True
 
-Funcionario, Posto = inicializa_funcionario()
+Funcionario, Posto, SessaoTrabalho = inicializa_funcionario()
 
 db = Conectar_DB('funcionarios')  # deve retornar o engine
 SessionLocal = sessionmaker(bind=db)

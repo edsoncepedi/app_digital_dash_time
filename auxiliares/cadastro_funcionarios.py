@@ -1,18 +1,19 @@
 
-from flask import current_app, render_template, request, jsonify, url_for, flash, redirect
+from flask import app, current_app, render_template, request, jsonify, url_for, flash, redirect
 from auxiliares.banco_post import Conectar_DB
 from auxiliares.associacao import inicializa_funcionario
 from sqlalchemy.orm import sessionmaker
+from auxiliares.classes import verifica_estado_producao
 from datetime import datetime
 from threading import Event
 
 evento_resposta = Event()
 debug_mode=True
-Funcionario, Posto = inicializa_funcionario()
+Funcionario, Posto, SessaoTrabalho = inicializa_funcionario()
 db = Conectar_DB('funcionarios')  # deve retornar o engine
 SessionLocal = sessionmaker(bind=db)
 
-def rotas_funcionarios(app, mqttc, socketio):
+def rotas_funcionarios(app, mqttc, socketio, supervisor):
     @app.route('/cadastro_funcionario', methods=['GET', 'POST'])
     def cadastro_funcionario():
         if request.method == 'POST':
@@ -104,84 +105,85 @@ def rotas_funcionarios(app, mqttc, socketio):
 
     @app.route('/rfid__checkin_posto', methods=['POST'])
     def rfid_event():
-        # 1) Pegar JSON da requisição
+        if not verifica_estado_producao() and not debug_mode:
+            return jsonify({"status": "error", "message": "Produção não iniciada", "autorizado": False}), 200
+
         data = request.get_json(silent=True) or {}
         tag = data.get('tag')
-        posto_nome = data.get('posto')   # ex.: "posto_0"
-
-        if not tag or not posto_nome:
-            return jsonify({
-                "status": "error",
-                "message": "Campos 'tag' e 'posto' são obrigatórios."
-            }), 400
+        posto_nome = data.get('posto')
+        acao = data.get('acao') # "entrada" ou "saida"
 
         session = SessionLocal()
+        agora = datetime.now()
 
         try:
-            # 2) Buscar funcionário pela tag
-            func = session.query(Funcionario).filter_by(rfid_tag=tag).first()
-
-            if func is None:
-                # 🔴 Tag não encontrada
-                resposta = {
-                    "status": "unknown_tag",
-                    "posto": posto_nome,
-                    "message": f"Tag {tag} não cadastrada.",
-                    "autorizado": False
-                }
-                return jsonify(resposta), 200
-
-            # 3) Buscar posto pelo NOME recebido (posto_0, posto_1, ...)
+            # 1. Busca as configurações do Posto
             posto_db = session.query(Posto).filter_by(nome=posto_nome).first()
+            if not posto_db:
+                return jsonify({
+                    "status": "error", 
+                    "message": "Posto não cadastrado", 
+                    "autorizado": False
+                }), 200
 
-            if posto_db is None:
-                # posto não existe na tabela
-                resposta = {
-                    "status": "invalid_posto",
-                    "posto": posto_nome,
-                    "message": f"Posto '{posto_nome}' não cadastrado.",
-                    "autorizado": False,
-                    "funcionario": {
-                        "id": func.id,
-                        "nome": func.nome,
-                        "rfid_tag": func.rfid_tag,
-                    }
-                }
-                return jsonify(resposta), 200
+            # --- LÓGICA DE ENTRADA (Check-in) ---
+            if acao == "entrada":
+                if not tag:
+                    return jsonify({"status": "error", "message": "Tag ausente", "autorizado": False}), 200
 
-            # 4) Verificar se o funcionário é o responsável por ESTE posto
-            # (coluna funcionario_id da tabela posto)
-            if posto_db.funcionario_id != func.id:
-                resposta = {
-                    "status": "forbidden_posto",
-                    "posto": posto_nome,
-                    "message": (
-                    f"Funcionário '{func.nome}' não está autorizado "
-                    f"a operar no posto '{posto_nome}'."
-                    ),
-                    "autorizado": False,
-                    "funcionario": {
-                        "id": func.id,
-                        "nome": func.nome,
-                        "rfid_tag": func.rfid_tag,
-                    }
-                }
-                return jsonify(resposta), 200
+                func = session.query(Funcionario).filter_by(rfid_tag=tag).first()
+                if not func:
+                    return jsonify({"status": "unknown_tag", "message": "Funcionário não cadastrado", "autorizado": False}), 200
 
-            # 🟢 Se chegou aqui: tag encontrada e funcionário bate com o posto
-            resposta = {
-                "status": "ok",
-                "message": "Acesso autorizado.",
-                "posto": posto_nome,
-                "autorizado": True,
-                "funcionario": {
-                    "id": func.id,
-                    "nome": func.nome,
-                    "rfid_tag": func.rfid_tag,
-                    "horas_trabalho": float(func.horas_trabalho)
-                    }
-                }
-            return jsonify(resposta), 200
+                if posto_db.funcionario_id != func.id:
+                    return jsonify({
+                        "status": "forbidden", 
+                        "message": f"Acesso Negado: {func.nome} não autorizado", 
+                        "autorizado": False
+                    }), 200
 
+                sessao_existente = session.query(SessaoTrabalho).filter_by(posto_nome=posto_nome, horario_saida=None).first()
+                if sessao_existente:
+                    return jsonify({"status": "error", "message": "Posto já ocupado", "autorizado": False}), 200
+
+                # Cria a sessão
+                nova_sessao = SessaoTrabalho(funcionario_id=func.id, posto_nome=posto_nome, horario_entrada=agora)
+                session.add(nova_sessao)
+                
+                # --- COMMIT AQUI ---
+                session.commit()
+                
+                supervisor.atualizar_operador_posto(posto_nome, {
+                    "id": func.id, "nome": func.nome, "foto": func.imagem_path
+                })
+                
+                return jsonify({
+                    "status": "ok", 
+                    "message": f"Bem-vindo, {func.nome}", 
+                    "autorizado": True
+                }), 200
+
+            # --- LÓGICA DE SAÍDA (Check-out) ---
+            elif acao == "saida":
+                sessao_ativa = session.query(SessaoTrabalho).filter_by(posto_nome=posto_nome, horario_saida=None).first()
+
+                if not sessao_ativa:
+                    return jsonify({"status": "error", "message": "Nenhum operador logado", "autorizado": False}), 200
+
+                # Fecha a sessão
+                sessao_ativa.horario_saida = agora
+                delta = agora - sessao_ativa.horario_entrada
+                sessao_ativa.duracao_segundos = int(delta.total_seconds())
+                
+                # --- COMMIT AQUI ---
+                session.commit()
+                
+                supervisor.atualizar_operador_posto(posto_nome, None)
+                
+                return jsonify({"status": "ok", "message": "Saída registrada", "autorizado": True}), 200
+
+        except Exception as e:
+            session.rollback()
+            return jsonify({"status": "error", "message": str(e), "autorizado": False}), 500
         finally:
             session.close()

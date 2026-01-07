@@ -47,7 +47,7 @@ def create_app():
 
     # Registro de funcionalidades
     configurar_rotas(app, mqtt, socketio, supervisor)
-    rotas_funcionarios(app, mqtt, socketio)
+    rotas_funcionarios(app, mqtt, socketio,supervisor)
     configurar_mqtt_handlers(mqtt, socketio)
     configurar_socketio_handlers(socketio)
     register_socketio_handlers(socketio, supervisor)
