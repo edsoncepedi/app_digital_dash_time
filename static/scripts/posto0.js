@@ -213,6 +213,63 @@ function stateName(s){
     return ["IDLE","BS","BT1","BT2","BD"][stateIndex(s)] || "IDLE";
 }
 
+function normalizarFotoUrl(foto) {
+  if (!foto) return null;
+
+  // Se já for URL absoluta, mantém
+  if (/^https?:\/\//i.test(foto)) return foto;
+
+  // Garante barra inicial (ex: "static/..." -> "/static/...")
+  return foto.startsWith("/") ? foto : "/" + foto;
+}
+
+function aplicarOperadorUI({ nomeElId, avatarElId, operador }) {
+  const nomeEl = document.getElementById(nomeElId);
+  const avatarEl = document.getElementById(avatarElId);
+  if (!nomeEl || !avatarEl) return;
+
+  if (operador && operador.nome) {
+    const nome = operador.nome.trim();
+    nomeEl.textContent = nome;
+
+    const fotoUrl = normalizarFotoUrl(operador.foto || operador.imagem);
+    if (fotoUrl) {
+      avatarEl.style.backgroundImage = `url("${fotoUrl}")`;
+      avatarEl.textContent = "";
+    } else {
+      avatarEl.style.backgroundImage = "";
+      avatarEl.textContent = nome ? nome[0].toUpperCase() : "?";
+    }
+  } else {
+    nomeEl.textContent = "Não alocado";
+    avatarEl.style.backgroundImage = "";
+    avatarEl.textContent = "?";
+  }
+}
+
+socket.on("global/operador_update", (data) => {
+  // data.posto esperado: "posto_0", "posto_1", ...
+  if (!data || data.posto !== `posto_${POSTO_ID}`) return;
+
+  aplicarOperadorUI({
+    nomeElId: "op-nome",
+    avatarElId: "op-foto",
+    operador: data.operador
+  });
+});
+
+socket.on("global/sync_data", (data) => {
+  // data.operadores esperado: { "posto_0": {...}, "posto_1": null, ... }
+  if (!data || !data.operadores) return;
+
+  const op = data.operadores[`posto_${POSTO_ID}`];
+  aplicarOperadorUI({
+    nomeElId: "op-nome",
+    avatarElId: "op-foto",
+    operador: op
+  });
+});
+
 // atualizar UI do posto
 function updateUI(s){
     if(!s) return;
