@@ -2,17 +2,28 @@
 from dataclasses import asdict
 import time
 import math # Importado para a lógica de projeção
-import auxiliares.classes as classes
 from auxiliares.utils import reiniciar_sistema, posto_anterior, posto_proximo
+from auxiliares.banco_post import consulta_funcionario_posto 
+import logging
 
+# -----------------------------------------------------------------------------
+# LOGGING
+# -----------------------------------------------------------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="[%(levelname)s] %(asctime)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
 class PostoSupervisor:
-    def __init__(self, postos, socketio, mqttc):
+    def __init__(self, postos, socketio, mqttc, state):
         self.postos = postos
         self.socketio = socketio
         self.mqttc = mqttc
         self._snapshots = {}
         self.operadores_ativos = {}
+        self.state = state
         
         # NOVAS VARIÁVEIS DE ESTADO GLOBAL
         self.meta_producao = 0 
@@ -23,6 +34,56 @@ class PostoSupervisor:
         for p in self.postos.values():
             p.on_change = self._on_change
             p.mudanca_estado = self.mudanca_estado
+            p.transporte = self.transporte
+
+    def handle_mqtt_message(self, message):
+        try:
+            topic = message.topic
+            payload_bytes = message.payload
+            payload = payload_bytes.decode() if isinstance(payload_bytes, (bytes, bytearray)) else str(payload_bytes)
+        except Exception as e:
+            logger.error("Mensagem MQTT inválida: %s", e)
+            return
+
+        parts = topic.split("/")
+        if len(parts) != 4:
+            return
+
+        sistema, embarcado, dispositivo, agente = parts
+
+        # ✅ regra global fica AQUI
+        if sistema != "rastreio_nfc" or agente != "dispositivo":
+            return
+
+        if not self.state.producao_ligada():
+            return
+
+        posto = self.postos.get(dispositivo)
+        if not posto:
+            logger.warning("Posto %s não inicializado.", dispositivo)
+            return
+
+        posto.tratamento_dispositivo(payload)
+
+    def iniciar_producao(self, origem="sistema"):
+        # 1️⃣ Ligar produção (fonte de verdade)
+        self.state.ligar_producao(
+            por=origem,
+            motivo="inicio da produção"
+        )
+
+        # 2️⃣ Inicializar cada posto
+        for posto_id, posto in self.postos.items():
+            posto.inicia_prod_tempo()
+
+            nome, imagem = consulta_funcionario_posto(posto_id)
+            posto.add_funcionario(nome, imagem)
+
+            # 3️⃣ Notificar front
+            posto._notify()
+
+        # 4️⃣ Iniciar timer global
+        self.resetar_timer()
 
 # --- MÉTODOS AUXILIARES NOVOS ---
     def atualizar_operador_posto(self, posto_nome, dados_operador):
@@ -88,6 +149,10 @@ class PostoSupervisor:
                 if self.postos[posto_anterior(posto_id)].get_estado() == 3: # Espera
                     self.command(posto_anterior(posto_id), "ativa_batedor")
 
+    def transporte(self, posto_id):
+        logger.debug("Chamando transporte do %s → %s", self.posto_anterior, self.id_posto)
+        self.postos[posto_id].calcula_transporte()
+
     def _on_change(self, snap):
         d = asdict(snap) 
         
@@ -118,7 +183,10 @@ class PostoSupervisor:
 
             if self.meta_producao > 0 and snap.n_produtos >= self.meta_producao: 
                 self.parar_timer()
-                classes.encerra_producao() 
+                self.state.desligar_producao(
+                    por="sistema",
+                    motivo="meta atingida"
+                )
                 self.socketio.emit("timer/control", {"action": "stop"}) 
                 self.socketio.emit("alerta_geral", {'mensagem': "Produção Finalizada. Reinicie o Sistema", 'cor': "#00b377", 'tempo': 1000}) 
                 #reiniciar_sistema(debug=False, dados=False, backup=True)

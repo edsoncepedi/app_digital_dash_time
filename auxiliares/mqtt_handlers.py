@@ -1,7 +1,6 @@
-from auxiliares.classes import trata_mensagem_DD
 from auxiliares.front_assoc import front_mqtt_assoc
 
-def configurar_mqtt_handlers(mqtt, socketio):
+def configurar_mqtt_handlers(mqtt, socketio, supervisor):
     @mqtt.on_connect()
     def handle_connect(client, userdata, flags, rc):
         print("Conectado ao broker MQTT.")
@@ -16,6 +15,6 @@ def configurar_mqtt_handlers(mqtt, socketio):
             print(f"[MQTT] - Front Assoc: {e}")
 
         try:
-            trata_mensagem_DD(message)
+            supervisor.handle_mqtt_message(message)
         except Exception as e:
             print(f"Erro tratamento rastreadores: {e}")

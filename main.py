@@ -17,6 +17,7 @@ from auxiliares.classes import inicializar_postos
 import auxiliares.classes as classes
 from app.supervisor import PostoSupervisor
 from app.socketio_gateway import register_socketio_handlers
+from state import State
 
 load_dotenv()
 
@@ -39,17 +40,19 @@ def create_app():
     app.config['MQTT_CLIENT_ID'] = os.getenv('MQTT_CLIENT_ID')
     app.config['ADMIN_DELETE_PASSWORD'] = os.getenv("ADMIN_DELETE_PASSWORD", "1234")
 
+    app.state = State(total_postos=int(os.getenv('NUMERO_POSTOS', 2)))
+
     # Inicialização de extensões
     mqtt = Mqtt()
-    socketio = SocketIO(app, cors_allowed_origins="*")
-    inicializar_postos(mqtt)
-    supervisor = PostoSupervisor(classes.postos, socketio, mqtt)
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+    postos = inicializar_postos(mqtt)
+    supervisor = PostoSupervisor(postos, socketio, mqtt, state=app.state)
 
     # Registro de funcionalidades
     configurar_rotas(app, mqtt, socketio, supervisor)
     rotas_funcionarios(app, mqtt, socketio,supervisor)
-    configurar_mqtt_handlers(mqtt, socketio)
-    configurar_socketio_handlers(socketio)
+    configurar_mqtt_handlers(mqtt, socketio, supervisor)
+    configurar_socketio_handlers(socketio, supervisor)
     register_socketio_handlers(socketio, supervisor)
 
     mqtt.init_app(app)

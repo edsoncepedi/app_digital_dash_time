@@ -17,6 +17,8 @@ from auxiliares.utils import imprime_qrcode, gera_codigo_produto
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional
+from flask import current_app
+
 
 
 class PostoState(Enum):
@@ -58,9 +60,9 @@ logger = logging.getLogger(__name__)
 # -----------------------------------------------------------------------------
 # ESTADO GLOBAL
 # -----------------------------------------------------------------------------
-hora_inicio = time.perf_counter()
-producao: bool = False
-postos: Dict[str, "Posto"] = {}
+
+#hora_inicio = time.perf_counter()
+#producao: bool = False
 
 # Pasta padrão para CSV/XLSX
 DATA_DIR = Path(".")
@@ -82,7 +84,7 @@ COLS_POSTO = [
 # -----------------------------------------------------------------------------
 # FUNÇÕES DE CONTROLE DE PRODUÇÃO
 # -----------------------------------------------------------------------------
-
+"""
 def inicia_producao() -> None:
     global producao
     global postos
@@ -103,9 +105,9 @@ def encerra_producao() -> None:
         producao = False
         logger.info("Produção ENCERRADA.")
 
-
+"""
 def verifica_estado_producao() -> bool:
-    return producao
+    return current_app.state.producao_ligada()
 
 
 # -----------------------------------------------------------------------------
@@ -113,13 +115,12 @@ def verifica_estado_producao() -> bool:
 # -----------------------------------------------------------------------------
 
 def inicializar_postos(mqttc) -> None:
-    global postos
-    for i in range(ultimo_posto_bios + 1):
+    postos: Dict[str, "Posto"] = {}
+    for i in range(int(os.getenv('NUMERO_POSTOS', 2)) + 1):
         nome = f"posto_{i}"
         postos[nome] = Posto(nome, mqttc)
     logger.info("Postos inicializados: %s", ", ".join(postos.keys()))
-
-
+    return postos
 # -----------------------------------------------------------------------------
 # TABELA DE ASSOCIAÇÃO PRODUTO↔PALETE
 # -----------------------------------------------------------------------------
@@ -228,6 +229,7 @@ class Posto:
         self.mqttc = mqttc
         self.on_change = None # callback opcional
         self.mudanca_estado = None # callback opcional
+        self.transporte = None # callback opcional
         self._last_update = time.time()
 
         self.funcionario_nome = None
@@ -355,7 +357,7 @@ class Posto:
             if payload == "BS":
                 if self.posto_anterior is not None:
                     logger.debug("Chamando transporte do %s → %s", self.posto_anterior, self.id_posto)
-                    postos[self.posto_anterior].calcula_transporte()
+                    self.transporte(self.posto_anterior)
                 if self.maquina_estado == 0:
                     logger.info("[%s] - ESTADO 1 - BS", self.nome)
                     arrival = round(self.timestamp["BS"] - self.timestamp["BD"], 2)
@@ -467,7 +469,6 @@ class Posto:
             try:
                 self.mudanca_estado(self.id_posto, estado)
             except Exception as e:
-                # AQUI ESTAVA O PROBLEMA: 'pass' escondia o erro.
                 # Agora vamos logar o erro para saber o que quebrou no Supervisor.
                 logger.error(f"Erro ao notificar mudança de estado no {self.id_posto}: {e}", exc_info=True)
         self._notify()
@@ -527,32 +528,4 @@ class Posto:
 # -----------------------------------------------------------------------------
 
 def trata_mensagem_DD(message) -> None:
-    try:
-        topic = getattr(message, "topic")
-        payload_bytes = getattr(message, "payload")
-        payload_str = payload_bytes.decode() if isinstance(payload_bytes, (bytes, bytearray)) else str(payload_bytes)
-    except Exception as e:
-        logger.error("Mensagem inválida recebida: %s", e)
-        return
-
-    topicos = topic.split("/") if isinstance(topic, str) else []
-    if len(topicos) != 4:
-        return
-
-    sistema, embarcado, dispositivo, agente = topicos
-
-    try:
-        n_posto = int(dispositivo.split("_")[1])
-    except Exception:
-        return
-
-    if n_posto > ultimo_posto_bios:
-        return
-
-    # Só processa se produção estiver ativa
-    if sistema == "rastreio_nfc" and agente == "dispositivo" and producao:
-        posto = postos.get(dispositivo)
-        if posto is None:
-            logger.warning("Posto %s não inicializado.", dispositivo)
-            return
-        posto.tratamento_dispositivo(payload_str)
+    pass

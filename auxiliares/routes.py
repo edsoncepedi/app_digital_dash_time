@@ -10,6 +10,7 @@ import auxiliares.classes as classes
 from threading import Event
 from auxiliares.socketio_handlers import tem_cliente_associacao
 from auxiliares.configuracoes import cartao_palete
+from auxiliares.configuracoes import ultimo_posto_bios
 evento_resposta = Event()
 import numpy as np
 
@@ -34,7 +35,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
     #Rota para enviar comandos do Raspberry
     @app.route("/comando", methods=['POST'])
     def comando():
-        if classes.verifica_estado_producao():
+        if supervisor.state.producao_ligada():
             dados = request.get_json(silent=True)
             comando = dados.get('comando')
             # Se o comando for de impressão de produto chama-se a função de gerar produto e depois ele é impresso
@@ -136,12 +137,15 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
         #Se for o comando Start
         if dados and dados['tipo'] == 'start':
             # Inicialização do sistema de Postos
-            classes.inicializar_postos(mqttc)
-            classes.inicia_producao()
+            #classes.inicializar_postos(mqttc)
+            #classes.inicia_producao()
+            supervisor.iniciar_producao(origem="painel_controle")
             mqttc.publish(f"ControleProducao_DD", f"Start")
+            supervisor.resetar_timer()
+            supervisor.iniciar_timer(meta=int(meta_producao))
 
-            #Retorna para a página o sucesso da inicialização do sistema
-            return jsonify(status='sucesso', mensagem='O Sistema foi inciado: Produção ON'), 200
+            return jsonify(status='sucesso', mensagem='Produção ON'), 200
+        
         #Se for um comando para o sistema (Reiniciar sistema ou produtos)
         elif dados and dados['tipo'] == 'comando':
             comando = dados['mensagem']
@@ -154,7 +158,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
             if comando == 'Start':
                 #Enviando Tópicos para os dispositivos temporizadores
                 #classes.inicializar_postos(mqttc)
-                classes.inicia_producao()
+                #classes.inicia_producao()
                 mqttc.publish(f"ControleProducao_DD", f"Start")
 
                 supervisor.resetar_timer()
@@ -172,7 +176,9 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
             elif comando == 'Stop':
                 # Lógica para reiniciar produtos
                 supervisor.parar_timer()
-                classes.encerra_producao()
+                supervisor.state.desligar_producao(por="painel_controle", motivo="stop manual")
+                mqttc.publish("ControleProducao_DD", "Stop")
+
                 return jsonify(status='sucesso', mensagem='Produção encerrada'), 200
             
             else:
@@ -194,7 +200,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
         palete = data.get('palete')
 
         # Se a produção não foi iniciada Retorna para a interface a mensagem
-        if not classes.verifica_estado_producao():
+        if not supervisor.state.producao_ligada():
             return f"A produção ainda não foi iniciada. Não é possível associar."
 
         # Se o código de produto for inválido
@@ -211,7 +217,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
                 memoriza_produto(produto)
 
                 classes.associacoes.associa(palete, produto)
-                classes.postos['posto_0'].insert_produto(produto)
+                supervisor.postos['posto_0'].insert_produto(produto)
                 mqttc.publish(f"rastreio_nfc/esp32/posto_0/dispositivo", "BT1")
                 #classes.adicionarProduto(produto)
 
@@ -241,7 +247,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
 
     @app.route("/posto/<int:posto_id>")
     def posto_operador(posto_id):
-        if posto_id >= len(classes.postos):
+        if posto_id >= ultimo_posto_bios + 1:
             return "Posto inválido.", 404
         elif posto_id == 0:
             sleep(1)

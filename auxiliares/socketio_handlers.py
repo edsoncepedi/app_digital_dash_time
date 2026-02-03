@@ -14,7 +14,7 @@ def tem_cliente_associacao():
     #Se tiver cliente retorna True senão False
     return len(clientes_associacao) >= 1
 
-def configurar_socketio_handlers(socketio):
+def configurar_socketio_handlers(socketio, supervisor):
     # Super função que é chamada assim que um cliente se conecta
     @socketio.on('connect')
     def handle_connect():
@@ -41,10 +41,10 @@ def configurar_socketio_handlers(socketio):
 
     def enviar_status_producao_periodicamente():
         while True:
-            status = verifica_estado_producao()  # Ex: "Ligada", "Desligada", etc.
+            status = supervisor.state.producao_ligada()  # Ex: "Ligada", "Desligada", etc.
             socketio.emit('atualiza_status_producao', {
                 'status': status
             })
             sleep(1)
 
-    threading.Thread(target=enviar_status_producao_periodicamente, daemon=True).start()
+    socketio.start_background_task(enviar_status_producao_periodicamente)
