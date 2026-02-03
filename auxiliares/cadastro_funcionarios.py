@@ -120,6 +120,7 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
             # 1. Busca as configurações do Posto
             posto_db = session.query(Posto).filter_by(nome=posto_nome).first()
             if not posto_db:
+                print("Posto não cadastrado:", posto_nome)
                 return jsonify({
                     "status": "error", 
                     "message": "Posto não cadastrado", 
@@ -129,13 +130,16 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
             # --- LÓGICA DE ENTRADA (Check-in) ---
             if acao == "entrada":
                 if not tag:
+                    print("Tag ausente na entrada")
                     return jsonify({"status": "error", "message": "Tag ausente", "autorizado": False}), 200
 
                 func = session.query(Funcionario).filter_by(rfid_tag=tag).first()
                 if not func:
+                    print("Funcionário não cadastrado para a tag:", tag)
                     return jsonify({"status": "unknown_tag", "message": "Funcionário não cadastrado", "autorizado": False}), 200
 
                 if posto_db.funcionario_id != func.id:
+                    print(f"Acesso Negado: {func.nome} não autorizado para o posto {posto_nome}")
                     return jsonify({
                         "status": "forbidden", 
                         "message": f"Acesso Negado: {func.nome} não autorizado", 
@@ -144,6 +148,7 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
 
                 sessao_existente = session.query(SessaoTrabalho).filter_by(posto_nome=posto_nome, horario_saida=None).first()
                 if sessao_existente:
+                    print("Posto já ocupado:", posto_nome)
                     return jsonify({"status": "error", "message": "Posto já ocupado", "autorizado": False}), 200
 
                 # Cria a sessão
@@ -156,7 +161,7 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
                 supervisor.atualizar_operador_posto(posto_nome, {
                     "id": func.id, "nome": func.nome, "foto": func.imagem_path
                 })
-                
+                print(f"Entrada registrada: {func.nome} no posto {posto_nome}")
                 return jsonify({
                     "status": "ok", 
                     "message": f"Bem-vindo, {func.nome}", 
@@ -168,6 +173,7 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
                 sessao_ativa = session.query(SessaoTrabalho).filter_by(posto_nome=posto_nome, horario_saida=None).first()
 
                 if not sessao_ativa:
+                    print("Nenhum operador logado no posto:", posto_nome)
                     return jsonify({"status": "error", "message": "Nenhum operador logado", "autorizado": False}), 200
 
                 # Fecha a sessão
@@ -179,7 +185,7 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
                 session.commit()
                 
                 supervisor.atualizar_operador_posto(posto_nome, None)
-                
+                print(f"Saída registrada do posto {posto_nome}")
                 return jsonify({"status": "ok", "message": "Saída registrada", "autorizado": True}), 200
 
         except Exception as e:

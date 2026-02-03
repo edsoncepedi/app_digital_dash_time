@@ -65,7 +65,7 @@ def verifica_cod_produto(code):
 
 def imprime_qrcode(code):
     mysocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    host = "172.16.8.55" #ERRADO DE PROPOSITO
+    host = "172.16.8.8" #ERRADO DE PROPOSITO
     port = 6101
 
     try:
