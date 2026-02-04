@@ -1,14 +1,20 @@
 # state.py
 import time
 import threading
+from enum import Enum
 
+class ProducaoStatus(Enum):
+    OFF = 0
+    ARMED = 1
+    ON = 2
 
 class ProducaoState:
     def __init__(self):
-        self.ligada = False
+        self.status = ProducaoStatus.OFF
         self.inicio_ts = None
         self.alterada_por = None
         self.motivo = None
+        self.meta = 0
 
 
 class State:
@@ -25,26 +31,47 @@ class State:
             }
             for i in range(total_postos)
         }
+        self.notifica_armando_producao = None # callback opcional
+
 
     # ---------- PRODUÇÃO ----------
+    def armar_producao(self, meta: int = 0, por=None, motivo=None):
+        with self._lock:
+            self.producao.status = ProducaoStatus.ARMED
+            self.producao.meta = meta
+            self.producao.alterada_por = por
+            self.producao.motivo = motivo
+            self.producao.inicio_ts = None
+        
+        if callable(self.notifica_armando_producao):
+            try:
+                self.notifica_armando_producao()
+            except Exception:
+                pass
+
     def ligar_producao(self, por=None, motivo=None):
         with self._lock:
-            if not self.producao.ligada:
-                self.producao.ligada = True
+            if self.producao.status != ProducaoStatus.ON:
+                self.producao.status = ProducaoStatus.ON
                 self.producao.inicio_ts = time.time()
                 self.producao.alterada_por = por
                 self.producao.motivo = motivo
 
     def desligar_producao(self, por=None, motivo=None):
         with self._lock:
-            self.producao.ligada = False
+            self.producao.status = ProducaoStatus.OFF
             self.producao.inicio_ts = None
+            self.producao.meta = 0
             self.producao.alterada_por = por
             self.producao.motivo = motivo
 
     def producao_ligada(self) -> bool:
         with self._lock:
-            return self.producao.ligada
+            return self.producao.status == ProducaoStatus.ON
+
+    def producao_armada(self) -> bool:
+        with self._lock:
+            return self.producao.status == ProducaoStatus.ARMED
 
     # ---------- POSTOS ----------
     def set_posto_pronto(self, posto_id: int, pronto: bool):

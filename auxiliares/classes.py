@@ -505,20 +505,20 @@ class Posto:
                 self.on_change(self.snapshot())
             except Exception:
                 pass
-    
-    def set_buzzer(self, on: bool):
-        if self.mqttc:
-            self.mqttc.publish(f"linha/{self.id_posto}/buzzer", "ON" if on else "OFF")
-        return
-
-    def set_light(self, color: str):
-        if self.mqttc:
-            self.mqttc.publish(f"linha/{self.id_posto}/light", color.upper())
-        return
 
     def ativa_batedor(self):
         if self.mqttc:
             self.mqttc.publish(f"rastreio_nfc/raspberry/{self.id_posto}/sistema", "batedor")
+        return
+
+    def ativa_camera(self):
+        if self.mqttc:
+            self.mqttc.publish(f"sistema/camera/{self.id_posto}", "restart")
+        return
+
+    def desativa_camera(self):
+        if self.mqttc:
+            self.mqttc.publish(f"sistema/camera/{self.id_posto}", "stop")
         return
     
     def get_estado(self):
@@ -526,6 +526,3 @@ class Posto:
 # -----------------------------------------------------------------------------
 # MQTT → Roteamento de mensagens para cada Posto
 # -----------------------------------------------------------------------------
-
-def trata_mensagem_DD(message) -> None:
-    pass

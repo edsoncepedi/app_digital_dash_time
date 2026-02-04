@@ -65,25 +65,25 @@ class PostoSupervisor:
 
         posto.tratamento_dispositivo(payload)
 
-    def iniciar_producao(self, origem="sistema"):
-        # 1️⃣ Ligar produção (fonte de verdade)
+    def iniciar_producao(self, origem="sistema", meta_producao=0):
+        if self.state.producao_ligada():
+            return  # idempotente
+
         self.state.ligar_producao(
             por=origem,
-            motivo="inicio da produção"
+            motivo="todos os operadores presentes"
         )
 
-        # 2️⃣ Inicializar cada posto
-        for posto_id, posto in self.postos.items():
+        #Sinal Esteira Iniciada
+        if self.mqttc:
+            self.mqttc.publish("ControleProducao_DD", "Start")
+
+        for posto in self.postos.values():
             posto.inicia_prod_tempo()
-
-            nome, imagem = consulta_funcionario_posto(posto_id)
-            posto.add_funcionario(nome, imagem)
-
-            # 3️⃣ Notificar front
             posto._notify()
 
-        # 4️⃣ Iniciar timer global
         self.resetar_timer()
+        self.iniciar_timer(meta_producao)
 
 # --- MÉTODOS AUXILIARES NOVOS ---
     def atualizar_operador_posto(self, posto_nome, dados_operador):
@@ -92,6 +92,13 @@ class PostoSupervisor:
             Se dados_operador for None, considera-se Logout.
             """
             self.operadores_ativos[posto_nome] = dados_operador
+
+            if dados_operador is None:
+                # Marca o posto como não pronto
+                self.state.set_posto_pronto(posto_nome, False)
+            else:
+                # Marca o posto como pronto
+                self.state.set_posto_pronto(posto_nome, True)
             
             payload = {
                 "posto": posto_nome,
@@ -102,6 +109,8 @@ class PostoSupervisor:
             # Emite para a sala específica do posto e para o dashboard global
             self.socketio.emit("posto/operador_changed", payload, room=f"posto:{posto_nome}")
             self.socketio.emit("global/operador_update", payload)
+
+            self.tentar_iniciar_producao()
 
     def _get_current_time_ms(self):
         tempo_ms = self.timer_accumulated * 1000
@@ -131,6 +140,7 @@ class PostoSupervisor:
         return texto
     
     def mudanca_estado(self, posto_id, novo_estado):
+        # LÓGICA DE ATIVAÇÃO DE BATEDOR
         if posto_id == 'posto_0':
             if novo_estado == 3: # Entrou em Espera
                 if self.postos[posto_proximo(posto_id)].get_estado() == 0: # Idle
@@ -148,6 +158,12 @@ class PostoSupervisor:
             elif novo_estado == 0: # Entrou em Idle 
                 if self.postos[posto_anterior(posto_id)].get_estado() == 3: # Espera
                     self.command(posto_anterior(posto_id), "ativa_batedor")
+        
+        # LÓGICA DE ATIVAÇÃO DA CÂMERA
+        if novo_estado == 1: # Chegou no Posto
+            self.command(posto_id, "ativa_camera")
+        elif novo_estado == 3: # Entrou em Idle
+            self.command(posto_id, "desativa_camera")
 
     def transporte(self, posto_id):
         logger.debug("Chamando transporte do %s → %s", self.posto_anterior, self.id_posto)
@@ -259,15 +275,30 @@ class PostoSupervisor:
             d["state"] = snap.state.value
         else:
             d["state"] = snap.state
-        
         return d
 
     def command(self, posto_id, cmd, **kwargs): 
         if posto_id in self.postos:
             p = self.postos[posto_id] 
-            if cmd == "buzzer": 
-                p.set_buzzer(kwargs.get("on", True)) 
-            elif cmd == "light": 
-                p.set_light(kwargs.get("color", "green"))
-            elif cmd == "ativa_batedor":
+            if cmd == "ativa_batedor":
                 p.ativa_batedor()
+            elif cmd == "ativa_camera":
+                p.ativa_camera()
+            elif cmd == "desativa_camera":
+                p.desativa_camera()
+
+    def notifica_armando_producao(self):
+        self.tentar_iniciar_producao()
+
+    def tentar_iniciar_producao(self):
+        if not self.state.producao_armada():
+            return
+
+        if not self.state.pode_iniciar_producao():
+            return
+
+        # 🔥 condição satisfeita
+        self.iniciar_producao(
+            origem="checkin",
+            meta_producao=self.state.producao.meta
+    )
