@@ -38,8 +38,6 @@ class PostoSupervisor:
             p.mudanca_estado = self.mudanca_estado
             p.transporte = self.transporte
         
-
-
     def handle_mqtt_message(self, message):
         try:
             topic = message.topic
@@ -89,32 +87,40 @@ class PostoSupervisor:
         self.resetar_timer()
         self.iniciar_timer(meta_producao)
 
-# --- MÉTODOS AUXILIARES NOVOS ---
+    # --- MÉTODOS AUXILIARES NOVOS ---
     def atualizar_operador_posto(self, posto_nome, dados_operador):
-            """
-            Atualiza o estado interno e emite o evento para o frontend.
-            Se dados_operador for None, considera-se Logout.
-            """
-            self.operadores_ativos[posto_nome] = dados_operador
+        """
+        Atualiza estado interno e emite eventos.
+        Nunca deve quebrar o fluxo de check-in/check-out.
+        """
+        self.operadores_ativos[posto_nome] = dados_operador
+
+        # 1) Atualiza prontidão no state (pode falhar por id fora do range, etc)
+        try:
             posto_id = posto_nome_para_id(posto_nome)
-            if dados_operador is None:
-                # Marca o posto como não pronto
-                self.state.set_posto_pronto(posto_id, False)
-            else:
-                # Marca o posto como pronto
-                self.state.set_posto_pronto(posto_id, True)
-            
-            payload = {
-                "posto": posto_nome,
-                "operador": dados_operador,
-                "online": dados_operador is not None
-            }
-            
-            # Emite para a sala específica do posto e para o dashboard global
+            self.state.set_posto_pronto(posto_id, dados_operador is not None)
+        except Exception as e:
+            logger.error("Falha ao setar posto pronto (%s): %r", posto_nome, e, exc_info=True)
+
+        payload = {
+            "posto": posto_nome,
+            "operador": dados_operador,
+            "online": dados_operador is not None,
+        }
+
+        # 2) Emissões socket não podem derrubar
+        try:
             self.socketio.emit("posto/operador_changed", payload, room=f"posto:{posto_nome}")
             self.socketio.emit("global/operador_update", payload)
+        except Exception as e:
+            logger.error("Falha ao emitir socket (%s): %r", posto_nome, e, exc_info=True)
 
+        # 3) Tentar iniciar produção não pode derrubar
+        try:
             self.tentar_iniciar_producao()
+        except Exception as e:
+            logger.error("Falha ao tentar iniciar produção: %r", e, exc_info=True)
+
 
     def _get_current_time_ms(self):
         tempo_ms = self.timer_accumulated * 1000

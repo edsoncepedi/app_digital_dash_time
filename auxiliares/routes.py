@@ -1,6 +1,6 @@
 import pandas as pd
 from flask import render_template, request, jsonify, url_for, flash, redirect
-from auxiliares.utils import imprime_qrcode, gera_codigo_produto, verifica_cod_produto, memoriza_produto, reiniciar_produtos, reiniciar_sistema
+from auxiliares.utils import imprime_qrcode, gera_codigo_produto, verifica_cod_produto, memoriza_produto, reiniciar_produtos, reiniciar_sistema, posto_nome_para_id
 from auxiliares.banco_post import verifica_conexao_banco, Conectar_DB, inserir_dados, consulta_paletes
 from auxiliares.associacao import inicializa_funcionario
 from sqlalchemy.orm import sessionmaker
@@ -134,18 +134,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
         # Dados coletados do JS
         dados = request.get_json()
 
-        #Se for o comando Start
-        if dados and dados['tipo'] == 'start':
-
-            supervisor.iniciar_producao(origem="painel_controle")
-            mqttc.publish(f"ControleProducao_DD", f"Start")
-            supervisor.resetar_timer()
-            supervisor.iniciar_timer(meta=int(meta_producao))
-
-            return jsonify(status='sucesso', mensagem='Produção Armada'), 200
-        
-        #Se for um comando para o sistema (Reiniciar sistema ou produtos)
-        elif dados and dados['tipo'] == 'comando':
+        if dados and dados['tipo'] == 'comando':
             comando = dados['mensagem']
             try:
                 meta_producao = dados['valor_inteiro']
@@ -154,6 +143,12 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
 
             # Lógica para tratar comandos diferentes
             if comando == 'Start':
+
+                for posto_nome in supervisor.postos.keys():
+                    op = supervisor.operadores_ativos.get(posto_nome)
+                    posto_id = posto_nome_para_id(posto_nome)
+                    supervisor.state.set_posto_pronto(posto_id, op is not None)
+
                 supervisor.state.armar_producao(
                     meta=meta_producao,
                     por="painel",
