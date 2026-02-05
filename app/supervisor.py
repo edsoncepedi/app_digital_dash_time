@@ -2,7 +2,7 @@
 from dataclasses import asdict
 import time
 import math # Importado para a lógica de projeção
-from auxiliares.utils import reiniciar_sistema, posto_anterior, posto_proximo
+from auxiliares.utils import reiniciar_sistema, posto_anterior, posto_proximo, posto_nome_para_id
 from auxiliares.banco_post import consulta_funcionario_posto 
 import logging
 
@@ -31,10 +31,14 @@ class PostoSupervisor:
         self.timer_start_ts = None
         self.timer_accumulated = 0
 
+        self.state.notifica_armando_producao = self.notifica_armando_producao
+
         for p in self.postos.values():
             p.on_change = self._on_change
             p.mudanca_estado = self.mudanca_estado
             p.transporte = self.transporte
+        
+
 
     def handle_mqtt_message(self, message):
         try:
@@ -92,13 +96,13 @@ class PostoSupervisor:
             Se dados_operador for None, considera-se Logout.
             """
             self.operadores_ativos[posto_nome] = dados_operador
-
+            posto_id = posto_nome_para_id(posto_nome)
             if dados_operador is None:
                 # Marca o posto como não pronto
-                self.state.set_posto_pronto(posto_nome, False)
+                self.state.set_posto_pronto(posto_id, False)
             else:
                 # Marca o posto como pronto
-                self.state.set_posto_pronto(posto_nome, True)
+                self.state.set_posto_pronto(posto_id, True)
             
             payload = {
                 "posto": posto_nome,

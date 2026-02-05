@@ -40,7 +40,7 @@ def create_app():
     app.config['MQTT_CLIENT_ID'] = os.getenv('MQTT_CLIENT_ID')
     app.config['ADMIN_DELETE_PASSWORD'] = os.getenv("ADMIN_DELETE_PASSWORD", "1234")
 
-    app.state = State(total_postos=int(os.getenv('NUMERO_POSTOS', 2)))
+    app.state = State(int(os.getenv('NUMERO_POSTOS', 2)))
 
     # Inicialização de extensões
     mqtt = Mqtt()

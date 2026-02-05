@@ -18,7 +18,7 @@ class ProducaoState:
 
 
 class State:
-    def __init__(self, total_postos: int):
+    def __init__(self, ultimo_posto: int):
         self._lock = threading.Lock()
         self.producao = ProducaoState()
 
@@ -29,7 +29,7 @@ class State:
                 "snapshot": None,
                 "updated_at": None,
             }
-            for i in range(total_postos)
+            for i in range(ultimo_posto+1)
         }
         self.notifica_armando_producao = None # callback opcional
 
@@ -65,6 +65,14 @@ class State:
             self.producao.alterada_por = por
             self.producao.motivo = motivo
 
+    def get_producao_status(self) -> str:
+        with self._lock:
+            return self.producao.status.name 
+    
+    def get_meta(self) -> int:
+        with self._lock:
+            return int(getattr(self.producao, "meta", 0) or 0)
+
     def producao_ligada(self) -> bool:
         with self._lock:
             return self.producao.status == ProducaoStatus.ON
@@ -72,6 +80,7 @@ class State:
     def producao_armada(self) -> bool:
         with self._lock:
             return self.producao.status == ProducaoStatus.ARMED
+            
 
     # ---------- POSTOS ----------
     def set_posto_pronto(self, posto_id: int, pronto: bool):

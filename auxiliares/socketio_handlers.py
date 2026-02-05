@@ -41,10 +41,13 @@ def configurar_socketio_handlers(socketio, supervisor):
 
     def enviar_status_producao_periodicamente():
         while True:
-            status = supervisor.state.producao_ligada()  # Ex: "Ligada", "Desligada", etc.
-            socketio.emit('atualiza_status_producao', {
-                'status': status
-            })
-            sleep(1)
+            try:
+                socketio.emit("atualiza_status_producao", {
+                    "status": supervisor.state.get_producao_status()  # "OFF" | "ARMED" | "ON"
+                })
+            except Exception as e:
+                print("Erro ao enviar status:", e)
+
+            socketio.sleep(1)  # ⚠️ importante (eventlet)
 
     socketio.start_background_task(enviar_status_producao_periodicamente)

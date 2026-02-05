@@ -53,17 +53,23 @@ function enviarComando(comando) {
 }
 
 socket.on('atualiza_status_producao', data => {
+    const status = data.status;
     const elemento = document.getElementById('status-indicador');
-    if (data.status === true) {
+    if (status === "ON") {
         elemento.textContent = 'Ligada 🟢';
         elemento.style.color = '#22c55e';
         elemento.style.borderColor = 'rgba(34,197,94,0.7)';
         elemento.style.background = 'rgba(34,197,94,0.12)';
-    } else {
+    } else if (status === "OFF") {
         elemento.textContent = 'Desligada 🔴';
         elemento.style.color = '#f97373';
         elemento.style.borderColor = 'rgba(248,113,113,0.7)';
         elemento.style.background = 'rgba(248,113,113,0.12)';
+    } else if (status === "ARMED") {
+        elemento.textContent = 'Armada 🟡';
+        elemento.style.color = '#f59e0b';
+        elemento.style.borderColor = 'rgba(245,158,11,0.7)';
+        elemento.style.background = 'rgba(245,158,11,0.12)';
     }
 });
 

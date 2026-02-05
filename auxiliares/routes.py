@@ -136,15 +136,13 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
 
         #Se for o comando Start
         if dados and dados['tipo'] == 'start':
-            # Inicialização do sistema de Postos
-            #classes.inicializar_postos(mqttc)
-            #classes.inicia_producao()
+
             supervisor.iniciar_producao(origem="painel_controle")
             mqttc.publish(f"ControleProducao_DD", f"Start")
             supervisor.resetar_timer()
             supervisor.iniciar_timer(meta=int(meta_producao))
 
-            return jsonify(status='sucesso', mensagem='Produção ON'), 200
+            return jsonify(status='sucesso', mensagem='Produção Armada'), 200
         
         #Se for um comando para o sistema (Reiniciar sistema ou produtos)
         elif dados and dados['tipo'] == 'comando':

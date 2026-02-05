@@ -253,3 +253,28 @@ def posto_proximo(posto_id):
     if numero_proximo > ultimo_posto_bios:
         return None
     return proximo_id
+
+def posto_nome_para_id(posto_nome: str) -> int:
+    """
+    Aceita:
+    - 'posto_0'
+    - 'Posto 0'
+    - 'POSTO 0'
+    - '0'
+    """
+    
+    if posto_nome is None:
+        raise ValueError("posto_nome é None")
+
+    s = str(posto_nome).strip().lower()
+
+    # caso seja "0"
+    if s.isdigit():
+        return int(s)
+
+    # caso seja "posto_0" ou "posto 0"
+    m = re.search(r'(\d+)$', s)
+    if not m:
+        raise ValueError(f"Formato inválido de posto: {posto_nome}")
+
+    return int(m.group(1))

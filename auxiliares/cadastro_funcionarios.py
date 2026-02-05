@@ -105,9 +105,6 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
 
     @app.route('/rfid__checkin_posto', methods=['POST'])
     def rfid_event():
-        if not verifica_estado_producao() and not debug_mode:
-            return jsonify({"status": "error", "message": "Produção não iniciada", "autorizado": False}), 200
-
         data = request.get_json(silent=True) or {}
         tag = data.get('tag')
         posto_nome = data.get('posto')
@@ -157,10 +154,16 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
                 
                 # --- COMMIT AQUI ---
                 session.commit()
-                
-                supervisor.atualizar_operador_posto(posto_nome, {
-                    "id": func.id, "nome": func.nome, "foto": func.imagem_path
-                })
+
+                try:
+                    supervisor.atualizar_operador_posto(posto_nome, {
+                        "id": func.id,
+                        "nome": func.nome,
+                        "foto": func.imagem_path
+                    })
+                except Exception as e:
+                    print("⚠️ Falha ao atualizar supervisor:", repr(e))
+
                 print(f"Entrada registrada: {func.nome} no posto {posto_nome}")
                 return jsonify({
                     "status": "ok", 
