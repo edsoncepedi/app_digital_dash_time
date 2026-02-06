@@ -46,7 +46,7 @@ class PostoSupervisor:
         except Exception as e:
             logger.error("Mensagem MQTT inválida: %s", e)
             return
-
+        
         parts = topic.split("/")
         if len(parts) != 4:
             return
@@ -56,16 +56,17 @@ class PostoSupervisor:
         # ✅ regra global fica AQUI
         if sistema != "rastreio_nfc" or agente != "dispositivo":
             return
+        
+        posto = self.postos.get(dispositivo)
+        posto.controle_mqtt_camera(payload)
 
         if not self.state.producao_ligada():
             return
 
-        posto = self.postos.get(dispositivo)
         if not posto:
             logger.warning("Posto %s não inicializado.", dispositivo)
             return
 
-        posto.controle_mqtt_camera(payload)
         posto.tratamento_dispositivo(payload)
 
     def iniciar_producao(self, origem="sistema", meta_producao=0):
