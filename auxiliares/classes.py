@@ -521,6 +521,13 @@ class Posto:
             self.mqttc.publish(f"sistema/camera/{self.id_posto}", "stop")
         return
     
+    def controle_mqtt_camera(self, payload):
+        if payload == "BS":
+            self.ativa_camera()
+        elif payload == "BD":
+            self.desativa_camera()
+        return
+    
     def get_estado(self):
         return self.maquina_estado
 # -----------------------------------------------------------------------------

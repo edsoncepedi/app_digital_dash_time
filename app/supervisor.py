@@ -65,6 +65,7 @@ class PostoSupervisor:
             logger.warning("Posto %s não inicializado.", dispositivo)
             return
 
+        posto.controle_mqtt_camera(payload)
         posto.tratamento_dispositivo(payload)
 
     def iniciar_producao(self, origem="sistema", meta_producao=0):
@@ -170,10 +171,11 @@ class PostoSupervisor:
                     self.command(posto_anterior(posto_id), "ativa_batedor")
         
         # LÓGICA DE ATIVAÇÃO DA CÂMERA
+        """
         if novo_estado == 1: # Chegou no Posto
             self.command(posto_id, "ativa_camera")
         elif novo_estado == 3: # Entrou em Idle
-            self.command(posto_id, "desativa_camera")
+            self.command(posto_id, "desativa_camera")"""
 
     def transporte(self, posto_id):
         logger.debug("Chamando transporte do %s → %s", self.posto_anterior, self.id_posto)
