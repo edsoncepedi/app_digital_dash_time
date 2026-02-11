@@ -17,10 +17,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class PostoSupervisor:
-    def __init__(self, postos, socketio, mqttc, state):
+    def __init__(self, postos, socketio, mqttc, state, vision_state=None):
         self.postos = postos
         self.socketio = socketio
         self.mqttc = mqttc
+        self.vision_state = vision_state
         self._snapshots = {}
         self.operadores_ativos = {}
         self.state = state
@@ -33,11 +34,58 @@ class PostoSupervisor:
 
         self.state.notifica_armando_producao = self.notifica_armando_producao
 
+        self._bt2_reject_cooldown = {}  
+
+
         for p in self.postos.values():
             p.on_change = self._on_change
             p.mudanca_estado = self.mudanca_estado
             p.transporte = self.transporte
-        
+
+    def _alerta_bt2_bloqueado(self, posto_id: str):
+        now = time.time()
+        last = self._bt2_reject_cooldown.get(posto_id, 0)
+
+        # cooldown: 1.0s
+        if (now - last) < 1.0:
+            return
+
+        self._bt2_reject_cooldown[posto_id] = now
+
+        try:
+            self.socketio.emit("alerta_geral", {
+                "mensagem": f"{posto_id.upper()} - finalize a montagem (visão) e pressione BT2 novamente.",
+                "cor": "#ff0000",
+                "tempo": 2500
+            })
+        except Exception:
+            pass
+    def _evento_bloqueado(self, posto, payload: str) -> bool:
+        """
+        Retorna True se o evento deve ser BLOQUEADO e não entregue à FSM do posto.
+        """
+
+        # Só travamos BT2, e somente quando o posto está na fase de montagem
+        if payload != "BT2":
+            return False
+
+        if posto.get_estado() != 2:
+            return False
+
+        # Checa visão (cache MQTT)
+        ok = self.vision_state.is_finalizado(
+            posto.id_posto,
+            min_stable_s=0.5,
+            max_age_s=3.0
+        )
+
+        if ok:
+            return False
+
+        # Não está finalizado => bloqueia
+        self._alerta_bt2_bloqueado(posto.id_posto)
+        return True
+
     def handle_mqtt_message(self, message):
         try:
             topic = message.topic
@@ -58,15 +106,28 @@ class PostoSupervisor:
             return
         
         posto = self.postos.get(dispositivo)
+        
+        if not posto:
+            logger.warning("Posto %s não inicializado.", dispositivo)
+            return
+
         posto.controle_mqtt_camera(payload)
 
         if not self.state.producao_ligada():
             return
 
-        if not posto:
-            logger.warning("Posto %s não inicializado.", dispositivo)
+        self.processar_evento_dispositivo(posto, payload)
+
+    def processar_evento_dispositivo(self, posto, payload: str):
+        """
+        ÚNICO lugar que entrega eventos do ESP32 para o Posto.
+        """
+
+        # 🔒 trava de eventos (gate)
+        if self._evento_bloqueado(posto, payload):
             return
 
+        # evento válido: entra na FSM normal
         posto.tratamento_dispositivo(payload)
 
     def iniciar_producao(self, origem="sistema", meta_producao=0):

@@ -19,6 +19,8 @@ from app.supervisor import PostoSupervisor
 from app.socketio_gateway import register_socketio_handlers
 from state import State
 
+from vision_state import VisionStateStore
+
 load_dotenv()
 
 def create_app():
@@ -42,11 +44,13 @@ def create_app():
 
     app.state = State(int(os.getenv('NUMERO_POSTOS', 2)))
 
+    vision_state = VisionStateStore()
+
     # Inicialização de extensões
     mqtt = Mqtt()
     socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
     postos = inicializar_postos(mqtt)
-    supervisor = PostoSupervisor(postos, socketio, mqtt, state=app.state)
+    supervisor = PostoSupervisor(postos, socketio, mqtt, state=app.state, vision_state=vision_state)
 
     # Registro de funcionalidades
     configurar_rotas(app, mqtt, socketio, supervisor)

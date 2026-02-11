@@ -15,6 +15,15 @@ def configurar_mqtt_handlers(mqtt, socketio, supervisor):
             print(f"[MQTT] - Front Assoc: {e}")
 
         try:
+            topic = getattr(message, "topic", "") or ""
+            if topic.startswith("visao/") and topic.endswith("/estado"):
+                # Ex: visao/posto_0/estado  payload: FINALIZADO
+                supervisor.vision_state.handle_mqtt_message_vision(message)
+                return
+        except Exception as e:
+            print(f"[MQTT] - VisionState: {e}")
+        
+        try:
             supervisor.handle_mqtt_message(message)
         except Exception as e:
             print(f"Erro tratamento rastreadores: {e}")

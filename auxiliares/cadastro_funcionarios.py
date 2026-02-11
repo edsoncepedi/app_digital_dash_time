@@ -13,7 +13,40 @@ Funcionario, Posto, SessaoTrabalho = inicializa_funcionario()
 db = Conectar_DB('funcionarios')  # deve retornar o engine
 SessionLocal = sessionmaker(bind=db)
 
+def rehidratar_operadores(supervisor):
+    session = SessionLocal()
+    try:
+        # todas as sessões ativas (um por posto, idealmente)
+        sessoes_ativas = (
+            session.query(SessaoTrabalho)
+            .filter(SessaoTrabalho.horario_saida.is_(None))
+            .all()
+        )
+
+        # limpa tudo no supervisor primeiro (opcional, depende do seu design)
+        # supervisor.reset_operadores()  # se existir
+
+        for s in sessoes_ativas:
+            func = session.query(Funcionario).get(s.funcionario_id)
+            if not func:
+                continue
+
+            supervisor.atualizar_operador_posto(s.posto_nome, {
+                "id": func.id,
+                "nome": func.nome,
+                "foto": func.imagem_path
+            })
+
+        print(f"✅ Rehidratação concluída: {len(sessoes_ativas)} sessões ativas.")
+    except Exception as e:
+        print("❌ Falha ao rehidratar operadores:", repr(e))
+    finally:
+        session.close()
+
 def rotas_funcionarios(app, mqttc, socketio, supervisor):
+    
+    rehidratar_operadores(supervisor)
+
     @app.route('/cadastro_funcionario', methods=['GET', 'POST'])
     def cadastro_funcionario():
         if request.method == 'POST':
