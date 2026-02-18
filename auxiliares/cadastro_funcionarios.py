@@ -176,10 +176,29 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
                         "autorizado": False
                     }), 200
 
-                sessao_existente = session.query(SessaoTrabalho).filter_by(posto_nome=posto_nome, horario_saida=None).first()
+                sessao_existente = session.query(SessaoTrabalho).filter_by(
+                    posto_nome=posto_nome,
+                    horario_saida=None
+                ).first()
+
                 if sessao_existente:
-                    print("Posto já ocupado:", posto_nome)
-                    return jsonify({"status": "error", "message": "Posto já ocupado", "autorizado": False}), 200
+                    # Se quem está tentando entrar é o mesmo que já está logado
+                    if sessao_existente.funcionario_id == func.id:
+                        print(f"⚠️ {func.nome} já está logado no posto {posto_nome}. Permitindo acesso sem criar nova sessão.")
+
+                        return jsonify({
+                            "status": "ok",
+                            "message": f"Você já está logado, {func.nome}",
+                            "autorizado": True
+                        }), 200
+
+                    # Caso seja outro funcionário
+                    print(f"Posto {posto_nome} já ocupado por outro funcionário.")
+                    return jsonify({
+                        "status": "error",
+                        "message": "Posto já ocupado",
+                        "autorizado": False
+                    }), 200
 
                 # Cria a sessão
                 nova_sessao = SessaoTrabalho(funcionario_id=func.id, posto_nome=posto_nome, horario_entrada=agora)
