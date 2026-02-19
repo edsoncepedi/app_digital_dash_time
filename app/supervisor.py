@@ -2,6 +2,7 @@
 from dataclasses import asdict
 import time
 import math # Importado para a lógica de projeção
+from typing import Optional
 from auxiliares.utils import reiniciar_sistema, posto_anterior, posto_proximo, posto_nome_para_id
 from auxiliares.banco_post import consulta_funcionario_posto 
 import logging
@@ -42,6 +43,24 @@ class PostoSupervisor:
             p.mudanca_estado = self.mudanca_estado
             p.transporte = self.transporte
 
+     # -------------------------------------------------------------------------
+     # ALERTA DIRECIONADO PARA UM POSTO (ROOM)
+     # -------------------------------------------------------------------------
+    def emit_alerta_posto(self, posto_id: str, mensagem: str, cor: str = "#ff0000", tempo: int = 2500):
+        """
+        Emite popup somente para o posto específico.
+        Ex: posto_id = 'posto_3'
+        """
+        try:
+            self.socketio.emit(
+                "alerta_posto",
+                {"mensagem": mensagem, "cor": cor, "tempo": tempo},
+                room=f"posto:{posto_id}"
+            )
+        except Exception:
+            pass
+
+
     def _alerta_bt2_bloqueado(self, posto_id: str):
         now = time.time()
         last = self._bt2_reject_cooldown.get(posto_id, 0)
@@ -52,14 +71,12 @@ class PostoSupervisor:
 
         self._bt2_reject_cooldown[posto_id] = now
 
-        try:
-            self.socketio.emit("alerta_geral", {
-                "mensagem": f"{posto_id.upper()} - finalize a montagem (visão) e pressione BT2 novamente.",
-                "cor": "#ff0000",
-                "tempo": 2500
-            })
-        except Exception:
-            pass
+        self.emit_alerta_posto(
+            posto_id=posto_id,
+            mensagem="Finalize a montagem (visão) e pressione BT2 novamente.",
+            cor="#ff0000",
+            tempo=2500
+        )
     def _evento_bloqueado(self, posto, payload: str) -> bool:
         """
         Retorna True se o evento deve ser BLOQUEADO e não entregue à FSM do posto.
@@ -130,13 +147,15 @@ class PostoSupervisor:
         # evento válido: entra na FSM normal
         posto.tratamento_dispositivo(payload)
 
-    def iniciar_producao(self, origem="sistema", meta_producao=0):
+    def iniciar_producao(self, origem="sistema", ordem_codigo=None, meta_producao=0):
         if self.state.producao_ligada():
             return  # idempotente
 
         self.state.ligar_producao(
             por=origem,
-            motivo="todos os operadores presentes"
+            motivo="todos os operadores presentes",
+            ordem_codigo=ordem_codigo,
+            meta=meta_producao
         )
 
         #Sinal Esteira Iniciada
@@ -374,5 +393,6 @@ class PostoSupervisor:
         # 🔥 condição satisfeita
         self.iniciar_producao(
             origem="checkin",
-            meta_producao=self.state.producao.meta
-    )
+            ordem_codigo=self.state.get_ordem_atual(),
+            meta_producao=self.state.get_meta()
+        )

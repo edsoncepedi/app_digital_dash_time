@@ -333,3 +333,7 @@ socket.on("posto/log", (data)=>{
     p.textContent = data.texto;
     box.appendChild(p);
 });
+
+socket.on("alerta_posto", (data) => {
+    mostrarPopup(data.mensagem, data.cor, data.tempo);
+});

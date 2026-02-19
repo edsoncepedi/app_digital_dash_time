@@ -10,6 +10,7 @@ from flask_socketio import SocketIO
 
 from auxiliares.routes import configurar_rotas
 from auxiliares.cadastro_funcionarios import rotas_funcionarios
+from auxiliares.cadastro_ordens import rotas_ordens
 from auxiliares.mqtt_handlers import configurar_mqtt_handlers
 from auxiliares.socketio_handlers import configurar_socketio_handlers
 from auxiliares.associacao import inicializa_Base_assoc
@@ -55,6 +56,7 @@ def create_app():
     # Registro de funcionalidades
     configurar_rotas(app, mqtt, socketio, supervisor)
     rotas_funcionarios(app, mqtt, socketio,supervisor)
+    rotas_ordens(app, mqtt, socketio, supervisor)
     configurar_mqtt_handlers(mqtt, socketio, supervisor)
     configurar_socketio_handlers(socketio, supervisor)
     register_socketio_handlers(socketio, supervisor)

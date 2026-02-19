@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ordens de Produção - DD</title>
+
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/controle.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ordens.css') }}">
+</head>
+
+<body>
+
+  <!-- TOPBAR (mesma do controle) -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">Ordens de Produção</div>
+      <nav class="nav">
+        <a href="/supervisorio">Supervisório</a>
+        <a href="/cadastro_funcionario">Funcionários</a>
+        <a href="/controle">Painel de Controle</a>
+        <a href="/ordens">Ordens de Produção</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- Cabeçalho -->
+    <div class="header">
+      <div class="header-left">
+        <div class="logo-wrapper">
+          <img src="../static/img/positivo.jpg" width="260" height="222" alt="Logo Positivo">
+        </div>
+        <div class="titulo">
+          <h1>Ordens de Produção</h1>
+          <span>Cadastro e gerenciamento das ordens (mock em Postgres)</span>
+        </div>
+      </div>
+
+      <div class="status-bar">
+        <span class="status-label">Status</span>
+        <div id="status-indicador">Mock ERP</div>
+      </div>
+    </div>
+
+    <!-- Mensagens -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="card">
+          {% for category, message in messages %}
+            <div class="flash-msg flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Card: cadastrar -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Cadastrar nova Ordem</div>
+          <div class="card-subtitle">Cadastre OPs que depois serão selecionadas no painel de controle.</div>
+        </div>
+      </div>
+
+      <form method="POST" action="/ordens">
+
+        <div class="linha-campos">
+
+          <div class="campo">
+            <label for="codigo_op">Código OP</label>
+            <input id="codigo_op" name="codigo_op" placeholder="OP000123" required />
+          </div>
+
+          <div class="campo">
+            <label for="produto">Produto</label>
+            <input id="produto" name="produto" placeholder="Produto X" required />
+          </div>
+
+          <div class="campo">
+            <label for="meta">Meta</label>
+            <input id="meta" name="meta" type="number" min="0" step="1" placeholder="1000" required />
+          </div>
+
+          <div class="campo">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+              <option value="ABERTA" selected>ABERTA</option>
+              <option value="EM_EXECUCAO">EM_EXECUCAO</option>
+              <option value="FINALIZADA">FINALIZADA</option>
+            </select>
+          </div>
+
+        </div>
+
+        <div class="linha-campos">
+          <div class="campo campo-full">
+            <label for="descricao">Descrição (opcional)</label>
+            <textarea id="descricao" name="descricao" placeholder="Observações da ordem..."></textarea>
+          </div>
+        </div>
+
+        <div class="botoes">
+          <button type="submit" class="btn-start">
+            💾 <span>Salvar OP</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+
+    <!-- Card: lista -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">OPs cadastradas</div>
+          <div class="card-subtitle">Lista sincronizada com o Postgres.</div>
+        </div>
+      </div>
+
+      {% if not ops %}
+        <div class="subtext">Nenhuma OP cadastrada ainda.</div>
+      {% else %}
+        <div class="table-wrapper">
+          <table class="tabela">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Código</th>
+                <th>Produto</th>
+                <th>Meta</th>
+                <th>Status</th>
+                <th>Descrição</th>
+                <th style="width:260px;">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for op in ops %}
+                <tr>
+                  <td>{{ op.id }}</td>
+                  <td><b>{{ op.codigo_op }}</b></td>
+                  <td>{{ op.produto }}</td>
+                  <td>{{ op.meta }}</td>
+                  <td>{{ op.status }}</td>
+                  <td>{{ op.descricao or "" }}</td>
+                  <td>
+                    <form method="POST" action="/ordens/deletar/{{ op.id }}" class="form-delete">
+                      <input name="senha_confirmacao" placeholder="senha (opcional)" />
+                      <button type="submit" class="btn-stop">Excluir</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+</body>
+</html>

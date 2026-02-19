@@ -14,6 +14,8 @@ class ProducaoState:
         self.inicio_ts = None
         self.alterada_por = None
         self.motivo = None
+
+        self.ordem_codigo = None
         self.meta = 0
 
 
@@ -35,10 +37,11 @@ class State:
 
 
     # ---------- PRODUÇÃO ----------
-    def armar_producao(self, meta: int = 0, por=None, motivo=None):
+    def armar_producao(self, meta: int = 0, ordem_codigo: str | None = None, por=None, motivo=None):
         with self._lock:
             self.producao.status = ProducaoStatus.ARMED
             self.producao.meta = meta
+            self.producao.ordem_codigo = ordem_codigo
             self.producao.alterada_por = por
             self.producao.motivo = motivo
             self.producao.inicio_ts = None
@@ -49,19 +52,22 @@ class State:
             except Exception:
                 pass
 
-    def ligar_producao(self, por=None, motivo=None):
+    def ligar_producao(self, por=None, motivo=None, ordem_codigo: str | None = None, meta: int = 0):
         with self._lock:
             if self.producao.status != ProducaoStatus.ON:
                 self.producao.status = ProducaoStatus.ON
                 self.producao.inicio_ts = time.time()
                 self.producao.alterada_por = por
                 self.producao.motivo = motivo
+                self.producao.ordem_codigo = ordem_codigo
+                self.producao.meta = int(meta or 0)
 
     def desligar_producao(self, por=None, motivo=None):
         with self._lock:
             self.producao.status = ProducaoStatus.OFF
             self.producao.inicio_ts = None
             self.producao.meta = 0
+            self.producao.ordem_codigo = None
             self.producao.alterada_por = por
             self.producao.motivo = motivo
 
@@ -72,6 +78,10 @@ class State:
     def get_meta(self) -> int:
         with self._lock:
             return int(getattr(self.producao, "meta", 0) or 0)
+
+    def get_ordem_atual(self):
+        with self._lock:
+            return getattr(self.producao, "ordem_codigo", None)
 
     def producao_ligada(self) -> bool:
         with self._lock:

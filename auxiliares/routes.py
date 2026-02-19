@@ -3,6 +3,7 @@ from flask import render_template, request, jsonify, url_for, flash, redirect
 from auxiliares.utils import imprime_qrcode, gera_codigo_produto, verifica_cod_produto, memoriza_produto, reiniciar_produtos, reiniciar_sistema, posto_nome_para_id
 from auxiliares.banco_post import verifica_conexao_banco, Conectar_DB, inserir_dados, consulta_paletes
 from auxiliares.associacao import inicializa_funcionario
+from auxiliares.models_ordens import OrdemProducao
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 from time import sleep
@@ -115,12 +116,18 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
         # GET → carrega dados normalmente
         funcionarios = session.query(Funcionario).order_by(Funcionario.nome).all()
         postos = session.query(Posto).order_by(Posto.id).all()
+        ops_abertas = session.query(OrdemProducao)\
+            .filter_by(status="ABERTA")\
+            .order_by(OrdemProducao.id.desc())\
+            .all()
         session.close()
 
         return render_template(
             "controle.html",
             funcionarios=funcionarios,
-            postos=postos
+            postos=postos,
+            ops=ops_abertas,
+            ordem_atual=supervisor.state.get_ordem_atual()
         )
 
     @app.route('/supervisorio')
@@ -136,27 +143,53 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
 
         if dados and dados['tipo'] == 'comando':
             comando = dados['mensagem']
-            try:
-                meta_producao = dados['valor_inteiro']
-            except:
-                pass
 
             # Lógica para tratar comandos diferentes
             if comando == 'Start':
+                # 🔥 Start agora exige Ordem de Produção
+                ordem_codigo = (dados.get("ordem") or "").strip()
+                if not ordem_codigo:
+                    return jsonify(status="erro", mensagem="Selecione uma Ordem de Produção."), 400
+
+                # Consulta OP no banco
+                session = SessionLocal()
+                try:
+                    ordem_db = session.query(OrdemProducao).filter_by(codigo_op=ordem_codigo).first()
+                    if not ordem_db:
+                        return jsonify(status="erro", mensagem="Ordem não encontrada no banco."), 404
+
+                    if ordem_db.status != "ABERTA":
+                        return jsonify(status="erro", mensagem=f"Ordem {ordem_codigo} não está ABERTA."), 400
+
+                    meta_producao = int(ordem_db.meta or 0)
+                    if meta_producao <= 0:
+                        return jsonify(status="erro", mensagem="Meta inválida na ordem (<= 0)."), 400
+                    
+                    # 🔥 Marca ordem como em execução (evita reuso acidental)
+                    ordem_db.status = "EM_EXECUCAO"
+                    ordem_db.atualizada_em = datetime.utcnow()
+                    session.commit()
+
+                finally:
+                    session.close()
 
                 for posto_nome in supervisor.postos.keys():
-                    op = supervisor.operadores_ativos.get(posto_nome)
+                    operador = supervisor.operadores_ativos.get(posto_nome)
                     posto_id = posto_nome_para_id(posto_nome)
-                    supervisor.state.set_posto_pronto(posto_id, op is not None)
+                    supervisor.state.set_posto_pronto(posto_id, operador is not None)
 
                 supervisor.state.armar_producao(
                     meta=meta_producao,
+                    ordem_codigo=ordem_codigo,
                     por="painel",
                     motivo="aguardando check-ins"
                 )
 
-                #Retorna para a página o sucesso da inicialização do sistema
-                return jsonify(status='sucesso', mensagem='O Sistema foi inciado: Produção ON'), 200
+               #Retorna para a página o sucesso da inicialização do sistema
+                return jsonify(
+                    status='sucesso',
+                    mensagem=f"Produção armada na ordem {ordem_codigo} (meta: {meta_producao}). Aguardando check-ins."
+                ), 200
             
             elif comando == 'Restart':
                 supervisor.resetar_timer()
@@ -167,6 +200,22 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
             elif comando == 'Stop':
                 # Lógica para reiniciar produtos
                 supervisor.parar_timer()
+
+                # Finaliza ordem no banco (se existir)
+                ordem_codigo = supervisor.state.get_ordem_atual()
+                if ordem_codigo:
+                    session = SessionLocal()
+                    try:
+                        ordem_db = session.query(OrdemProducao).filter_by(codigo_op=ordem_codigo).first()
+                        if ordem_db:
+                            ordem_db.status = "FINALIZADA"
+                            ordem_db.atualizada_em = datetime.utcnow()
+                            session.commit()
+                    except Exception:
+                        session.rollback()
+                    finally:
+                        session.close()
+
                 supervisor.state.desligar_producao(por="painel_controle", motivo="stop manual")
                 mqttc.publish("ControleProducao_DD", "Stop")
 

@@ -16,6 +16,7 @@
           <a href="/supervisorio">Supervisório</a>
           <a href="/cadastro_funcionario">Funcionários</a>
           <a href="/controle">Painel de Controle</a>
+          <a href="/ordens">Ordens de Produção</a>
         </nav>
       </div>
     </header>
@@ -40,6 +41,13 @@
 
         <!-- Popup central -->
         <div id="popup-aviso"></div>
+        <select id="op_select">
+        {% for op in ops %}
+            <option value="{{ op.codigo_op }}">
+            {{ op.codigo_op }} - {{ op.produto }} (meta: {{ op.meta }})
+            </option>
+        {% endfor %}
+        </select>
 
         <!-- Card: valor inteiro + botões -->
         <div class="card">
@@ -53,14 +61,42 @@
             <!-- Campo número inteiro -->
             <div class="linha-campos">
                 <div class="campo">
-                    <label for="valor-inteiro">Quantidade planejada (inteiro):</label>
+                    <label for="ordem_select">Ordem de Produção</label>
+                    <select id="ordem_select" name="ordem_select">
+                        <option value="">-- Selecionar OP --</option>
+                        {% for ordem in ops %}
+                            <option
+                                value="{{ ordem.codigo_op }}"
+                                data-meta="{{ ordem.meta }}"
+                            >
+                                {{ ordem.codigo_op }} - {{ ordem.produto }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="campo">
+                    <label for="meta_ordem">Meta da OP</label>
+                    <input
+                        type="number"
+                        id="meta_ordem"
+                        min="0"
+                        step="1"
+                        placeholder="Selecione uma OP"
+                        disabled
+                    >
+                </div>
+
+                <div class="campo">
+                    <label for="valor-inteiro">Quantidade planejada (manual)</label>
                     <input
                         type="number"
                         id="valor-inteiro"
                         name="valor_inteiro"
                         min="1"
                         step="1"
-                        placeholder="Digite um número inteiro maior que zero"
+                        placeholder="(opcional) - será removido"
+                        disabled
                     >
                 </div>
             </div>

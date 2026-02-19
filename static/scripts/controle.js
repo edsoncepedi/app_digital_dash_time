@@ -1,30 +1,50 @@
 const socket = io();
 
+function getOrdemSelecionada() {
+    const select = document.getElementById("ordem_select");
+    if (!select) return null;
+    const codigo = (select.value || "").trim();
+    return codigo || null;
+}
+
+function atualizarMetaUI() {
+    const select = document.getElementById("ordem_select");
+    const metaInput = document.getElementById("meta_ordem");
+    if (!select || !metaInput) return;
+
+    const opt = select.options[select.selectedIndex];
+    const meta = opt ? opt.getAttribute("data-meta") : null;
+
+    if (!select.value) {
+        metaInput.value = "";
+        metaInput.placeholder = "Selecione uma OP";
+        return;
+    }
+
+    metaInput.value = meta || 0;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const select = document.getElementById("ordem_select");
+    if (select) {
+        select.addEventListener("change", atualizarMetaUI);
+        atualizarMetaUI();
+    }
+});
+
 // Envia comandos simples (start/restart/stop)
 function enviarComando(comando) {
-    let valorInteiro = null;
-
     if (comando === 'Start') {
-        const input = document.getElementById('valor-inteiro');
-        const bruto = input.value.trim();
-        const numero = Number(bruto);
-
-        if (
-            bruto === '' ||
-            Number.isNaN(numero) ||
-            !Number.isInteger(numero) ||
-            numero <= 0
-        ) {
+        const ordemCodigo = getOrdemSelecionada();
+        if (!ordemCodigo) {
             mostrarPopup(
-                'Informe um número inteiro válido maior que zero antes de iniciar o sistema.',
+                'Selecione uma Ordem de Produção antes de iniciar.',
                 '#b91c1c',
-                4200
+                3500
             );
-            input.focus();
             return;
         }
 
-        valorInteiro = numero;
     }
 
     const payload = {
@@ -32,8 +52,8 @@ function enviarComando(comando) {
         mensagem: comando
     };
 
-    if (comando === 'Start' && valorInteiro !== null) {
-        payload.valor_inteiro = valorInteiro;
+    if (comando === 'Start') {
+        payload.ordem = getOrdemSelecionada();
     }
 
     fetch('/enviar', {
