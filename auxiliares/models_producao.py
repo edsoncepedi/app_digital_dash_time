@@ -1,11 +1,15 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from datetime import datetime
 
 Base = declarative_base()
 
-class LogProducao(Base):
-    __tablename__ = "log_producao"
+class LogEventoProducao(Base):
+    """
+    Log por peça/posto (eventos de produção).
+    NÃO confundir com log_producao (sessão Start->Stop).
+    """
+    __tablename__ = "log_eventos_producao"
 
     id = Column(Integer, primary_key=True)
     ordem_codigo = Column(String(50), nullable=False)

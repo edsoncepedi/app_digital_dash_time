@@ -13,6 +13,7 @@ from auxiliares.configuracoes import ultimo_posto_bios, cartao_palete
 from auxiliares.utils import verifica_palete_nfc, verifica_cod_produto
 from auxiliares.banco_post import inserir_dados, consulta_funcionario_posto  # noqa: F401  # mantido para uso futuro
 from auxiliares.utils import imprime_qrcode, gera_codigo_produto
+from auxiliares.posto_repo import criar_linha_aberta, atualizar_tempo_db, atualizar_produto_db, fechar_linha
 
 from enum import Enum
 from dataclasses import dataclass
@@ -234,6 +235,8 @@ class Posto:
 
         self.funcionario_nome = None
         self.funcionario_imagem = None
+
+        self.db_row_id_atual = None
     
     def insert_produto(self, produto):
         if verifica_cod_produto(produto):
@@ -265,6 +268,8 @@ class Posto:
         }
         self.df_historico = pd.concat([self.df_historico, pd.DataFrame([nova_linha])], ignore_index=True)
         self.salvarDadosLocais()
+        if self.db_row_id_atual is None:
+            self.db_row_id_atual = criar_linha_aberta(self.id_posto, palete=self.palete_atual)
 
     def atualizar_tempo(self, produto: Optional[str], tipo_tempo: str, valor: float) -> None:
         valor = float(valor)
@@ -284,6 +289,9 @@ class Posto:
             self.salvarDadosLocais()
             logger.info("[%s] %s atualizado (%.2fs).", self.nome, tipo_tempo, valor)
 
+        if self.db_row_id_atual is not None:
+            atualizar_tempo_db(self.id_posto, self.db_row_id_atual, tipo_tempo, valor)
+
     def atualiza_produto(self, produto: str) -> None:
         if len(self.df_historico) == 0:
             logger.warning("[%s] Nenhuma linha para associar produto.", self.nome)
@@ -292,6 +300,9 @@ class Posto:
         self.df_historico.at[idx, "produto"] = str(produto)
         self.salvarDadosLocais()
         logger.info("[%s] Produto %s associado à linha %d.", self.nome, produto, idx)
+        if self.db_row_id_atual is not None:
+            atualizar_produto_db(self.id_posto, self.db_row_id_atual, produto)
+
 
     # ------------------------------------------------------------------
     # Cálculos de tempos
@@ -395,6 +406,10 @@ class Posto:
                     self.calcula_transporte()
                     if self.produto_atual is not None:
                         associacoes.desassocia(self.produto_atual)
+
+                if self.db_row_id_atual is not None:
+                    fechar_linha(self.id_posto, self.db_row_id_atual)
+                    self.db_row_id_atual = None
 
                 self.produto_atual = None
                 self.palete_atual = None

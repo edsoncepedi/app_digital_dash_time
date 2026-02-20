@@ -2,36 +2,17 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 import pandas as pd
 from auxiliares.configuracoes import ip
+from auxiliares.db_writer import db_writer, InsertJob
 import threading
-
-# DB Credentials - PostgreSQL
-def Conectar_DB(DB_NAME):
-    try:
-        DB_HOST = ip  # Altere se necessário
-        DB_USER = 'postgres'
-        DB_PASSWORD = 'cepedi123'
-        DB_PORT = '5432'
-
-        engine = create_engine(f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}')
-        return engine
-
-    except Exception as e:
-        print(f"Erro ao conectar ao banco de dados: {e}")
-        return None
+from auxiliares.db_core import Conectar_DB
 
 
-def inserir_dados(df, dataframe, tabela):
-    def worker():
-        try:
-            # Conectar ao banco de dados
-            engine = Conectar_DB(dataframe)
 
-            # Inserir os dados do DataFrame na tabela 'sensor_data'
-            df.to_sql(tabela, engine, if_exists='append', index=False)
-            print(f"[DB] Dados inseridos na tabela '{tabela}' com sucesso.")
-        except Exception as e:
-            print(f"[ERRO] Falha ao salvar no banco: {e}")
-    threading.Thread(target=worker).start()
+def inserir_dados(df: pd.DataFrame, dataframe: str, tabela: str):
+    job = InsertJob(df=df, db_name=dataframe, table=tabela, max_retries=5)
+    ok = db_writer.submit(job)
+    if not ok:
+        print(f"[DB] FILA CHEIA: descartando insert em {tabela}. (considere aumentar max_queue ou reduzir taxa)")
 
 def verifica_conexao_banco(db):
     """
