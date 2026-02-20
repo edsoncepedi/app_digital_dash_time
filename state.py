@@ -17,6 +17,7 @@ class ProducaoState:
 
         self.ordem_codigo = None
         self.meta = 0
+        self.log_producao_id = None
 
 
 class State:
@@ -37,11 +38,12 @@ class State:
 
 
     # ---------- PRODUÇÃO ----------
-    def armar_producao(self, meta: int = 0, ordem_codigo: str | None = None, por=None, motivo=None):
+    def armar_producao(self, meta: int = 0, ordem_codigo: str | None = None, log_id=None, por=None, motivo=None):
         with self._lock:
             self.producao.status = ProducaoStatus.ARMED
             self.producao.meta = meta
             self.producao.ordem_codigo = ordem_codigo
+            self.producao.log_producao_id = log_id
             self.producao.alterada_por = por
             self.producao.motivo = motivo
             self.producao.inicio_ts = None
@@ -68,6 +70,7 @@ class State:
             self.producao.inicio_ts = None
             self.producao.meta = 0
             self.producao.ordem_codigo = None
+            self.producao.log_producao_id = None
             self.producao.alterada_por = por
             self.producao.motivo = motivo
 
@@ -82,6 +85,9 @@ class State:
     def get_ordem_atual(self):
         with self._lock:
             return getattr(self.producao, "ordem_codigo", None)
+    def get_log_producao_id(self):
+        with self._lock:
+            return getattr(self.producao, "log_producao_id", None)
 
     def producao_ligada(self) -> bool:
         with self._lock:

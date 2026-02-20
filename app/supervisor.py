@@ -4,7 +4,8 @@ import time
 import math # Importado para a lógica de projeção
 from typing import Optional
 from auxiliares.utils import reiniciar_sistema, posto_anterior, posto_proximo, posto_nome_para_id
-from auxiliares.banco_post import consulta_funcionario_posto 
+from auxiliares.banco_post import consulta_funcionario_posto, Conectar_DB
+from auxiliares.log_producao_repo import LogProducaoRepo
 import logging
 
 # -----------------------------------------------------------------------------
@@ -36,6 +37,8 @@ class PostoSupervisor:
         self.state.notifica_armando_producao = self.notifica_armando_producao
 
         self._bt2_reject_cooldown = {}  
+
+        self._log_repo = LogProducaoRepo(Conectar_DB("funcionarios"))
 
 
         for p in self.postos.values():
@@ -292,6 +295,15 @@ class PostoSupervisor:
 
             if self.meta_producao > 0 and snap.n_produtos >= self.meta_producao: 
                 self.parar_timer()
+
+                # 🔥 Finaliza log_producao por meta atingida
+                log_id = self.state.get_log_producao_id()
+                if log_id:
+                    try:
+                        self._log_repo.finalizar(log_id, "meta atingida")
+                    except Exception:
+                        pass
+
                 self.state.desligar_producao(
                     por="sistema",
                     motivo="meta atingida"

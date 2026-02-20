@@ -4,6 +4,7 @@ from auxiliares.utils import imprime_qrcode, gera_codigo_produto, verifica_cod_p
 from auxiliares.banco_post import verifica_conexao_banco, Conectar_DB, inserir_dados, consulta_paletes
 from auxiliares.associacao import inicializa_funcionario
 from auxiliares.models_ordens import OrdemProducao
+from auxiliares.log_producao_repo import LogProducaoRepo
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 from time import sleep
@@ -21,6 +22,7 @@ Funcionario, Posto, SessaoTrabalho = inicializa_funcionario()
 
 db = Conectar_DB('funcionarios')  # deve retornar o engine
 SessionLocal = sessionmaker(bind=db)
+log_repo = LogProducaoRepo(db)
 
 def configurar_rotas(app, mqttc, socketio, supervisor):
     @app.route("/ping")
@@ -165,6 +167,8 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
                     if meta_producao <= 0:
                         return jsonify(status="erro", mensagem="Meta inválida na ordem (<= 0)."), 400
                     
+                    log_id = log_repo.criar(ordem_codigo, meta_producao)
+                    
                     # 🔥 Marca ordem como em execução (evita reuso acidental)
                     ordem_db.status = "EM_EXECUCAO"
                     ordem_db.atualizada_em = datetime.utcnow()
@@ -181,6 +185,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
                 supervisor.state.armar_producao(
                     meta=meta_producao,
                     ordem_codigo=ordem_codigo,
+                    log_id=log_id,
                     por="painel",
                     motivo="aguardando check-ins"
                 )
@@ -200,6 +205,9 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
             elif comando == 'Stop':
                 # Lógica para reiniciar produtos
                 supervisor.parar_timer()
+                log_id = supervisor.state.get_log_producao_id()
+                if log_id:
+                    log_repo.finalizar(log_id, "stop manual")
 
                 # Finaliza ordem no banco (se existir)
                 ordem_codigo = supervisor.state.get_ordem_atual()
