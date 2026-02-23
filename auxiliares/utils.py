@@ -3,12 +3,14 @@ import socket
 import pandas as pd
 from auxiliares.configuracoes import ultimo_posto_bios
 from datetime import datetime, date
-import os.path
 import glob
 import shutil
 import sys
 from pyzbar.pyzbar import decode
 from auxiliares.configuracoes import cartao_palete
+from dotenv import load_dotenv
+import os
+
 dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
 load_dotenv(dotenv_path=dotenv_path)
 
