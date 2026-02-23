@@ -148,6 +148,17 @@ socket.on("posto/log", (data)=>{
     box.appendChild(p);
 });
 
+function mostrarPopup(mensagem, cor = '#333', duracao_ms = 3000) {
+    const popup = document.getElementById('popup-aviso');
+    popup.textContent = mensagem;
+    popup.style.backgroundColor = cor;
+    popup.style.display = 'block';
+
+    setTimeout(() => {
+        popup.style.display = 'none';
+    }, duracao_ms);
+}
+
 socket.on("alerta_posto", (data) => {
     mostrarPopup(data.mensagem, data.cor, data.tempo);
 });

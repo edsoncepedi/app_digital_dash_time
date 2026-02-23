@@ -161,11 +161,13 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
             if acao == "entrada":
                 if not tag:
                     print("Tag ausente na entrada")
+                    supervisor.emit_alerta_posto(posto_nome, f"Acesso Negado: Tag ausente", cor="#ff0000", tempo=2500)
                     return jsonify({"status": "error", "message": "Tag ausente", "autorizado": False}), 200
 
                 func = session.query(Funcionario).filter_by(rfid_tag=tag).first()
                 if not func:
                     print("Funcionário não cadastrado para a tag:", tag)
+                    supervisor.emit_alerta_posto(posto_nome, f"Acesso Negado: Tag {tag} não cadastrada", cor="#ff0000", tempo=2500)
                     return jsonify({"status": "unknown_tag", "message": "Funcionário não cadastrado", "autorizado": False}), 200
 
                 if posto_db.funcionario_id != func.id:
@@ -186,7 +188,7 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
                     # Se quem está tentando entrar é o mesmo que já está logado
                     if sessao_existente.funcionario_id == func.id:
                         print(f"⚠️ {func.nome} já está logado no posto {posto_nome}. Permitindo acesso sem criar nova sessão.")
-
+                        supervisor.emit_alerta_posto(posto_nome, f"⚠️ {func.nome} já está logado no posto {posto_nome}. Permitindo acesso sem criar nova sessão.", cor="#ff0000", tempo=2500)
                         return jsonify({
                             "status": "ok",
                             "message": f"Você já está logado, {func.nome}",
@@ -231,6 +233,7 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
 
                 if not sessao_ativa:
                     print("Nenhum operador logado no posto:", posto_nome)
+                    supervisor.emit_alerta_posto(posto_nome, f"Nenhum operador logado", cor="#ff0000", tempo=2500)
                     return jsonify({"status": "error", "message": "Nenhum operador logado", "autorizado": False}), 200
 
                 # Fecha a sessão
@@ -243,6 +246,7 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
                 
                 supervisor.atualizar_operador_posto(posto_nome, None)
                 print(f"Saída registrada do posto {posto_nome}")
+                supervisor.emit_alerta_posto(posto_nome, f"Saída registrada do posto {posto_nome}", cor="#00ff00", tempo=2500)
                 return jsonify({"status": "ok", "message": "Saída registrada", "autorizado": True}), 200
 
         except Exception as e:
