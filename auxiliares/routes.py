@@ -15,8 +15,13 @@ from auxiliares.configuracoes import cartao_palete
 from auxiliares.configuracoes import ultimo_posto_bios
 evento_resposta = Event()
 import numpy as np
+from dotenv import load_dotenv
+import os
 
-debug_mode=True
+dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+load_dotenv(dotenv_path=dotenv_path)
+
+debug_mode=bool(os.getenv('DEBUG'))
 
 Funcionario, Posto, SessaoTrabalho = inicializa_funcionario()
 
@@ -54,7 +59,8 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
         cod_palete = data['palete']
         if cod_palete:
             produto = gera_codigo_produto()
-            #imprime_qrcode(produto)
+            if not debug_mode:
+                imprime_qrcode(produto)
             socketio.emit('add_produto_impresso', {'codigo': produto})
             print(f'IMPRIMINDO CÓDIGO DE PRODUTO {produto}')
         else:

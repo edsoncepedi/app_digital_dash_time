@@ -9,7 +9,8 @@ import shutil
 import sys
 from pyzbar.pyzbar import decode
 from auxiliares.configuracoes import cartao_palete
-
+dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+load_dotenv(dotenv_path=dotenv_path)
 
 
 #Essa função é global, sem superpoderes, que serve para separar o nome e o numero de uma string. Utilizada para ler RUNIN2. Entrega runnin, 2.
@@ -65,7 +66,8 @@ def verifica_cod_produto(code):
 
 def imprime_qrcode(code):
     mysocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    host = "172.16.8.8" #ERRADO DE PROPOSITO
+
+    host = os.getenv('IP_IMPRESSORA') #ERRADO DE PROPOSITO
     port = 6101
 
     try:
