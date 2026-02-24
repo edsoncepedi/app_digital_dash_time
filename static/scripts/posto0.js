@@ -1,3 +1,7 @@
+let progressoAtual = 0;
+let progressoDestino = 0;
+let animandoProgresso = false;
+
 // Função para validar o código do produto (prototipado como "PTT01" até "PTT30")
 function verificaCodQrPrototipo(code) {
     if (code.length === 10) {
@@ -270,6 +274,39 @@ socket.on("global/sync_data", (data) => {
   });
 });
 
+function animarProgresso(destino){
+
+    progressoDestino = destino;
+
+    if(animandoProgresso) return;
+
+    animandoProgresso = true;
+
+    const intervalo = setInterval(() => {
+
+        if(progressoAtual < progressoDestino)
+            progressoAtual++;
+
+        else if(progressoAtual > progressoDestino)
+            progressoAtual--;
+
+        document.getElementById("mats-texto").textContent =
+            progressoAtual + "%";
+
+        document.querySelector(".ring").style.setProperty(
+            "--percent",
+            progressoAtual + "%"
+        );
+
+        if(progressoAtual === progressoDestino){
+            clearInterval(intervalo);
+            animandoProgresso = false;
+        }
+
+    }, 15); // velocidade (ms)
+
+}
+
 // atualizar UI do posto
 function updateUI(s){
     if(!s) return;
@@ -311,7 +348,7 @@ function updateUI(s){
 
     // Progresso (se você enviar pelo backend)
     if(s.mats_percent !== undefined){
-        document.getElementById("mats-texto").textContent = s.mats_percent + "%";
+        animarProgresso(s.mats_percent);
     }
 }
 

@@ -172,6 +172,7 @@ class PostoSupervisor:
         self.resetar_timer()
         self.iniciar_timer(meta_producao)
 
+
     # --- MÉTODOS AUXILIARES NOVOS ---
     def atualizar_operador_posto(self, posto_nome, dados_operador):
         """
@@ -274,6 +275,20 @@ class PostoSupervisor:
         else:
             d["state"] = snap.state
         # ---------------------
+        
+        # =========================
+        # CALCULO DO PROGRESSO
+        # =========================
+
+        if self.meta_producao > 0:
+            mats_percent = int(
+                (snap.n_produtos / self.meta_producao) * 100
+            )
+            mats_percent = max(0, min(100, mats_percent))
+        else:
+            mats_percent = 0
+
+        d["mats_percent"] = mats_percent
 
         self._snapshots[snap.id] = snap  
         self.socketio.emit("posto/state_changed", d, room=f"posto:{snap.id}") 
@@ -308,6 +323,8 @@ class PostoSupervisor:
                     por="sistema",
                     motivo="meta atingida"
                 )
+                if self.mqttc:
+                    self.mqttc.publish("ControleProducao_DD", "Stop")
                 self.socketio.emit("timer/control", {"action": "stop"}) 
                 self.socketio.emit("alerta_geral", {'mensagem': "Produção Finalizada. Reinicie o Sistema", 'cor': "#00b377", 'tempo': 1000}) 
                 #reiniciar_sistema(debug=False, dados=False, backup=True)

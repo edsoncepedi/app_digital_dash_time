@@ -1,5 +1,9 @@
 const socket = io();
 
+let progressoAtual = 0;
+let progressoDestino = 0;
+let animandoProgresso = false;
+
 function stateIndex(s){
     return (s && typeof s==='object' && 'value' in s) ? s.value : s;
 }
@@ -24,6 +28,39 @@ socket.on("connect", () => {
     socket.emit("join_posto", { posto: `posto_${POSTO_ID}` });
     socket.emit("posto/request_snapshot", { posto:`posto_${POSTO_ID}` });
 });
+
+function animarProgresso(destino){
+
+    progressoDestino = destino;
+
+    if(animandoProgresso) return;
+
+    animandoProgresso = true;
+
+    const intervalo = setInterval(() => {
+
+        if(progressoAtual < progressoDestino)
+            progressoAtual++;
+
+        else if(progressoAtual > progressoDestino)
+            progressoAtual--;
+
+        document.getElementById("mats-texto").textContent =
+            progressoAtual + "%";
+
+        document.querySelector(".ring").style.setProperty(
+            "--percent",
+            progressoAtual + "%"
+        );
+
+        if(progressoAtual === progressoDestino){
+            clearInterval(intervalo);
+            animandoProgresso = false;
+        }
+
+    }, 15); // velocidade (ms)
+
+}
 
 // atualizar UI do posto
 function updateUI(s){
@@ -66,7 +103,7 @@ function updateUI(s){
 
     // Progresso (se você enviar pelo backend)
     if(s.mats_percent !== undefined){
-        document.getElementById("mats-texto").textContent = s.mats_percent + "%";
+        animarProgresso(s.mats_percent);
     }
 }
 
