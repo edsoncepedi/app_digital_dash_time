@@ -57,7 +57,7 @@ def create_app():
     configurar_rotas(app, mqtt, socketio, supervisor)
     rotas_funcionarios(app, mqtt, socketio,supervisor)
     rotas_ordens(app, mqtt, socketio, supervisor)
-    configurar_mqtt_handlers(mqtt, socketio, supervisor)
+    configurar_mqtt_handlers(mqtt, socketio, supervisor, state=app.state)
     configurar_socketio_handlers(socketio, supervisor)
     register_socketio_handlers(socketio, supervisor)
 

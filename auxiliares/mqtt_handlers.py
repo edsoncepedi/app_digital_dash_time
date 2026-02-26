@@ -1,6 +1,6 @@
 from auxiliares.front_assoc import front_mqtt_assoc
 
-def configurar_mqtt_handlers(mqtt, socketio, supervisor):
+def configurar_mqtt_handlers(mqtt, socketio, supervisor, state):
     @mqtt.on_connect()
     def handle_connect(client, userdata, flags, rc):
         print("Conectado ao broker MQTT.")
@@ -10,7 +10,7 @@ def configurar_mqtt_handlers(mqtt, socketio, supervisor):
     @mqtt.on_message()
     def handle_mqtt_message(client, userdata, message):
         try:
-            front_mqtt_assoc(message, socketio)
+            front_mqtt_assoc(message, socketio, state)
         except Exception as e:
             print(f"[MQTT] - Front Assoc: {e}")
 

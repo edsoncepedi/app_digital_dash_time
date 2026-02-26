@@ -180,6 +180,18 @@ class PostoSupervisor:
         Nunca deve quebrar o fluxo de check-in/check-out.
         """
         self.operadores_ativos[posto_nome] = dados_operador
+        
+        # ⭐ SINCRONIZA COM O POSTO
+        if posto_nome in self.postos:
+            if dados_operador is None:
+                self.postos[posto_nome].add_funcionario(None, None)
+            else:
+                self.postos[posto_nome].add_funcionario(
+                    dados_operador.get("nome"),
+                    dados_operador.get("foto")
+                )
+
+            self.postos[posto_nome]._notify()
 
         # 1) Atualiza prontidão no state (pode falhar por id fora do range, etc)
         try:
@@ -274,7 +286,11 @@ class PostoSupervisor:
             d["state"] = snap.state.value
         else:
             d["state"] = snap.state
+
         # ---------------------
+        # ✅ INCLUI OPERADOR (pra não sumir no front)
+        d["operador"] = self.operadores_ativos.get(snap.id)
+        d["operador_online"] = (d["operador"] is not None)
         
         # =========================
         # CALCULO DO PROGRESSO
@@ -397,6 +413,11 @@ class PostoSupervisor:
             d["state"] = snap.state.value
         else:
             d["state"] = snap.state
+        
+        # ✅ INCLUI OPERADOR NO SNAPSHOT (F5 / join)
+        d["operador"] = self.operadores_ativos.get(posto_id)
+        d["operador_online"] = (d["operador"] is not None)
+
         return d
 
     def command(self, posto_id, cmd, **kwargs): 

@@ -41,13 +41,6 @@
 
         <!-- Popup central -->
         <div id="popup-aviso"></div>
-        <select id="op_select">
-        {% for op in ops %}
-            <option value="{{ op.codigo_op }}">
-            {{ op.codigo_op }} - {{ op.produto }} (meta: {{ op.meta }})
-            </option>
-        {% endfor %}
-        </select>
 
         <!-- Card: valor inteiro + botões -->
         <div class="card">
