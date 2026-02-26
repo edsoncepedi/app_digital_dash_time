@@ -199,3 +199,34 @@ function mostrarPopup(mensagem, cor = '#333', duracao_ms = 3000) {
 socket.on("alerta_posto", (data) => {
     mostrarPopup(data.mensagem, data.cor, data.tempo);
 });
+
+socket.on('atualiza_status_producao', data => {
+
+    const status = data.status;
+
+    const texto = document.getElementById('status-texto');
+    const bolinha = document.getElementById('status-bolinha');
+
+    bolinha.classList.remove(
+        'status-on',
+        'status-off',
+        'status-armed'
+    );
+
+    if (status === "ON") {
+        texto.textContent = "Ligada";
+        texto.style.color = '#22c55e';
+        bolinha.classList.add('status-on');
+
+    } else if (status === "OFF") {
+        texto.textContent = "Desligada";
+        texto.style.color = '#f97373';
+        bolinha.classList.add('status-off');
+
+    } else if (status === "ARMED") {
+        texto.textContent = "Armada";
+        texto.style.color = '#f59e0b';
+        bolinha.classList.add('status-armed');
+    }
+
+});

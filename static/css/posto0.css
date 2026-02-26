@@ -208,3 +208,31 @@ body{
     display: flex;
     align-items: center;
 }
+
+/* ==================== STATUS ==================== */
+
+.status-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+/* Estados */
+.status-on {
+    background: #22c55e; /* verde */
+}
+
+.status-off {
+    background: #f97373; /* vermelho */
+}
+
+.status-armed {
+    background: #f59e0b; /* amarelo */
+}

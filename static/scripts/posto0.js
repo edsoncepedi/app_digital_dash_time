@@ -42,15 +42,35 @@ const socket = io();
 socket.emit('pagina_associacao_connect');
 
 socket.on('atualiza_status_producao', data => {
-  const elemento = document.getElementById('status-indicador');
-  if (data.status === true) {
-    elemento.textContent = 'Ligada 🟢'; // Mostra status positivo com emoji verde
-    elemento.style.color = 'green';        // Muda a cor do texto para verde
-  } else {
-    elemento.textContent = 'Desligada 🔴'; // Mostra status negativo com emoji vermelho
-    elemento.style.color = 'red';             // Muda a cor do texto para vermelho
-  }
-  });
+
+    const status = data.status;
+
+    const texto = document.getElementById('status-texto');
+    const bolinha = document.getElementById('status-bolinha');
+
+    bolinha.classList.remove(
+        'status-on',
+        'status-off',
+        'status-armed'
+    );
+
+    if (status === "ON") {
+        texto.textContent = "Ligada";
+        texto.style.color = '#22c55e';
+        bolinha.classList.add('status-on');
+
+    } else if (status === "OFF") {
+        texto.textContent = "Desligada";
+        texto.style.color = '#f97373';
+        bolinha.classList.add('status-off');
+
+    } else if (status === "ARMED") {
+        texto.textContent = "Armada";
+        texto.style.color = '#f59e0b';
+        bolinha.classList.add('status-armed');
+    }
+
+});
 
 // Receber código do produto e preencher o campo automaticamente
 socket.on('add_produto_impresso', data => {
