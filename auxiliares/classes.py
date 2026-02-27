@@ -537,7 +537,9 @@ class Posto:
         return
     
     def controle_mqtt_camera(self, payload):
-        if payload == "BS":
+        if payload == "BS" and self.id_posto != "posto_0":
+            self.ativa_camera()
+        elif payload == "BT1" and self.id_posto == "posto_0":
             self.ativa_camera()
         elif payload == "BD":
             self.desativa_camera()

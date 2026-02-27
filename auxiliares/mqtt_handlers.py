@@ -23,7 +23,7 @@ def configurar_mqtt_handlers(mqtt, socketio, supervisor, state):
         except Exception as e:
             print(f"[MQTT] - VisionState: {e}")
         
-        try:
-            supervisor.handle_mqtt_message(message)
-        except Exception as e:
-            print(f"Erro tratamento rastreadores: {e}")
+        #try:
+        supervisor.handle_mqtt_message(message)
+        #except Exception as e:
+            #print(f"[MQTT] - Supervisor: {e}")

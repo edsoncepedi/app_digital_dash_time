@@ -19,6 +19,7 @@ import auxiliares.classes as classes
 from app.supervisor import PostoSupervisor
 from app.socketio_gateway import register_socketio_handlers
 from state import State
+from auxiliares.posto_repo import init_postos_models
 
 from vision_state import VisionStateStore
 
@@ -50,6 +51,7 @@ def create_app():
     # Inicialização de extensões
     mqtt = Mqtt()
     socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+    init_postos_models()
     postos = inicializar_postos(mqtt)
     supervisor = PostoSupervisor(postos, socketio, mqtt, state=app.state, vision_state=vision_state)
 

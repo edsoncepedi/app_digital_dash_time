@@ -14,10 +14,6 @@ def front_mqtt_assoc(message, socketio, state):
     else:
         sistema, embarcado, dispositivo, agente = topicos 
 
-    n_posto = int(dispositivo.split("_")[1])
-    if n_posto > ultimo_posto_bios:
-        return
-
     if sistema == "rastreio_nfc" and embarcado == "esp32" and dispositivo == "posto_0" and agente == "dispositivo":
         if verifica_palete_nfc(payload):
             if state.producao_ligada():
