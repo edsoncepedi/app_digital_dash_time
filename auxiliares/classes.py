@@ -85,28 +85,6 @@ COLS_POSTO = [
 # -----------------------------------------------------------------------------
 # FUNÇÕES DE CONTROLE DE PRODUÇÃO
 # -----------------------------------------------------------------------------
-"""
-def inicia_producao() -> None:
-    global producao
-    global postos
-    if not producao:
-        producao = True
-        for i in range(ultimo_posto_bios + 1):
-            posto = f"posto_{i}"
-            postos[posto].inicia_prod_tempo()
-            nome, imagem = consulta_funcionario_posto(posto)
-            postos[posto].add_funcionario(nome, imagem)
-            postos[posto]._notify()
-        logger.info("Produção INICIADA.")
-
-
-def encerra_producao() -> None:
-    global producao
-    if producao:
-        producao = False
-        logger.info("Produção ENCERRADA.")
-
-"""
 def verifica_estado_producao() -> bool:
     return current_app.state.producao_ligada()
 
