@@ -69,6 +69,10 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
         #evento_resposta.set()
 
     #Rota para o acesso da interface de controle
+    @app.route("/api/q_postos", methods=["GET"])
+    def quantidade_postos():
+        return jsonify({"q_postos": ultimo_posto_bios})
+
     @app.route("/controle", methods=["GET", "POST"])
     def painel_controle():
         session = SessionLocal()
