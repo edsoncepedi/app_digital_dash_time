@@ -21,7 +21,8 @@ import os
 dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
 load_dotenv(dotenv_path=dotenv_path)
 
-debug_mode=bool(os.getenv('DEBUG'))
+debug_mode=bool(int(os.getenv('DEBUG')))
+print(f"Debug mode: {debug_mode}")
 
 Funcionario, Posto, SessaoTrabalho = inicializa_funcionario()
 
@@ -60,9 +61,9 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
         if cod_palete:
             produto = gera_codigo_produto()
             if not debug_mode:
+                print(f'IMPRIMINDO CÓDIGO DE PRODUTO {produto}')
                 imprime_qrcode(produto)
             socketio.emit('add_produto_impresso', {'codigo': produto})
-            print(f'IMPRIMINDO CÓDIGO DE PRODUTO {produto}')
         else:
             socketio.emit('aviso_ao_operador_assoc', {'mensagem': "Antes de gerar um produto. Insira o palete no posto", 'cor': "#ffc107", 'tempo': 2000})
         #evento_resposta.set()

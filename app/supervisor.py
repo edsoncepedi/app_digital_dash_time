@@ -62,7 +62,10 @@ class PostoSupervisor:
             )
         except Exception:
             pass
-
+    
+    def emit_alerta_global(self, mensagem: str, cor: str = "#ff0000", tempo: int = 2500):
+        for posto_id in self.postos.keys():
+            self.emit_alerta_posto(posto_id, mensagem, cor, tempo)
 
     def _alerta_bt2_bloqueado(self, posto_id: str):
         now = time.time()
@@ -170,6 +173,7 @@ class PostoSupervisor:
             posto.inicia_prod_tempo()
             posto._notify()
 
+        self.emit_alerta_global("Atenção! Produção Iniciada!", cor="#00b377", tempo=3000)
         self.resetar_timer()
         self.iniciar_timer(meta_producao)
 
