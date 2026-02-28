@@ -115,6 +115,10 @@ class PostoSupervisor:
             logger.error("Mensagem MQTT inválida: %s", e)
             return
         
+        # Verificação que controla se a mensagem deve ser processada de acordo com o estado da produção
+        if not self.state.producao_ligada():
+            return
+        
         parts = topic.split("/")
         if len(parts) != 4:
             return
@@ -130,11 +134,8 @@ class PostoSupervisor:
         if not posto:
             logger.warning("Posto %s não inicializado.", dispositivo)
             return
-
+        
         posto.controle_mqtt_camera(payload)
-
-        if not self.state.producao_ligada():
-            return
 
         self.processar_evento_dispositivo(posto, payload)
 
@@ -275,7 +276,7 @@ class PostoSupervisor:
             self.command(posto_id, "desativa_camera")"""
 
     def transporte(self, posto_id):
-        logger.debug("Chamando transporte do %s → %s", self.posto_anterior, self.id_posto)
+        logger.debug("Chamando transporte do %s → %s", posto_anterior(posto_id), posto_id)
         self.postos[posto_id].calcula_transporte()
 
     def _on_change(self, snap):

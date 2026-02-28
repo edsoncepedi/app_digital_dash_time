@@ -419,16 +419,17 @@ class Posto:
 
         # Não é um timestamp: pode ser leitura NFC de palete
         elif verifica_palete_nfc(payload):
-            palete_lido = cartao_palete.get(payload)
-            if palete_lido is None:
-                logger.warning("[%s] Cartão %s não mapeado em cartao_palete.", self.nome, payload)
-                return
-            if self.id_posto == "posto_0":
-                self.palete_atual = palete_lido
-                self._notify()
-            else:
-                self.tratamento_palete(palete_lido)
-                self._notify()
+            if self.produto_atual is None or self.palete_atual is None:
+                palete_lido = cartao_palete.get(payload)
+                if palete_lido is None:
+                    logger.warning("[%s] Cartão %s não mapeado em cartao_palete.", self.nome, payload)
+                    return
+                if self.id_posto == "posto_0":
+                    self.palete_atual = palete_lido
+                    self._notify()
+                else:
+                    self.tratamento_palete(palete_lido)
+                    self._notify()
 
     # ------------------------------------------------------------------
     # Palete
