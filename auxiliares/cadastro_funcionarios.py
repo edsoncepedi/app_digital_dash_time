@@ -233,7 +233,7 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
 
                 if not sessao_ativa:
                     print("Nenhum operador logado no posto:", posto_nome)
-                    supervisor.emit_alerta_posto(posto_nome, f"Nenhum operador logado", cor="#ff0000", tempo=2500)
+                    #supervisor.emit_alerta_posto(posto_nome, f"Nenhum operador logado", cor="#ff0000", tempo=2500)
                     return jsonify({"status": "error", "message": "Nenhum operador logado", "autorizado": False}), 200
 
                 # Fecha a sessão
