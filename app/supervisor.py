@@ -99,7 +99,7 @@ class PostoSupervisor:
         ok = self.vision_state.is_finalizado(
             posto.id_posto,
             min_stable_s=0.5,
-            max_age_s=3.0
+            max_age_s=None
         )
 
         if ok:
