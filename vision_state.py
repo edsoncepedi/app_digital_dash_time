@@ -68,23 +68,27 @@ class VisionStateStore:
         self,
         posto: str,
         min_stable_s: float = 0.5,
-        max_age_s: float = 3.0
+        max_age_s: Optional[float] = 3.0
     ) -> bool:
         """
         True somente se:
         - estado == FINALIZADO
-        - não está stale (TTL)
+        - não está stale (TTL) se max_age_s não for None
         - FINALIZADO está estável por pelo menos min_stable_s
         """
+
         posto = self._normalize_posto(posto)
         now = time.time()
+
         with self._lock:
             snap = self._by_posto.get(posto)
             if not snap:
                 return False
 
-            if (now - snap.last_seen_ts) > float(max_age_s):
-                return False
+            # 🔵 Só aplica TTL se max_age_s NÃO for None
+            if max_age_s is not None:
+                if (now - snap.last_seen_ts) > float(max_age_s):
+                    return False
 
             if snap.estado != "FINALIZADO":
                 return False
