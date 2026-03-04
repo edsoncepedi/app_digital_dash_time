@@ -108,6 +108,12 @@ body{
     height:170px;
     border-radius:50%;
     background:#1f2226;
+    z-index:1;
+}
+
+#mats-texto{
+    position:relative;
+    z-index:2;
 }
 
 /* ==================== LOG ==================== */

@@ -29,6 +29,8 @@
     <div><b>Produto:</b> <span id="produto">--</span></div>
     <div><b>Modelo:</b> <span id="modelo">--</span></div>
     <div><b>Estado:</b> <span id="estado">--</span></div>
+    <div><b>Produzido:</b> <span id="produzido">--</span></div>
+    <div><b>Meta:</b> <span id="meta">--</span></div>
 </section>
 
 <div id="main-layout">
@@ -80,12 +82,12 @@
     <div class="row">
         <div class="col">
             <label for="produto" class="form-label"><h3>Código do Produto</h3></label>
-            <input type="text" class="form-control" id="produto" placeholder="Aguardando Produto" oninput="checkAndAdvance(this, 'palete')" readonly>
+            <input type="text" class="form-control" id="produto-input" placeholder="Aguardando Produto" oninput="checkAndAdvance(this, 'palete')" readonly>
         </div>
 
         <div class="col">
             <label for="palete" class="form-label"><h3>Código do Palete</h3></label>
-            <input type="text" class="form-control" id="palete" placeholder="Aguardando Palete" oninput="checkAndAdvance(this, 'produto')" readonly>
+            <input type="text" class="form-control" id="palete-input" placeholder="Aguardando Palete" oninput="checkAndAdvance(this, 'produto')" readonly>
         </div>
     </div>
 

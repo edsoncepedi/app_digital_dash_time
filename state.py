@@ -17,6 +17,7 @@ class ProducaoState:
 
         self.ordem_codigo = None
         self.meta = 0
+        self.modelo = None
         self.log_producao_id = None
 
 
@@ -38,10 +39,11 @@ class State:
 
 
     # ---------- PRODUÇÃO ----------
-    def armar_producao(self, meta: int = 0, ordem_codigo: str | None = None, log_id=None, por=None, motivo=None):
+    def armar_producao(self, meta: int = 0, ordem_codigo: str | None = None, log_id=None, por=None, motivo=None, modelo=None):
         with self._lock:
             self.producao.status = ProducaoStatus.ARMED
             self.producao.meta = meta
+            self.producao.modelo = modelo
             self.producao.ordem_codigo = ordem_codigo
             self.producao.log_producao_id = log_id
             self.producao.alterada_por = por
@@ -54,7 +56,7 @@ class State:
             except Exception:
                 pass
 
-    def ligar_producao(self, por=None, motivo=None, ordem_codigo: str | None = None, meta: int = 0):
+    def ligar_producao(self, por=None, motivo=None, ordem_codigo: str | None = None, meta: int = 0, modelo: str | None = None):
         with self._lock:
             if self.producao.status != ProducaoStatus.ON:
                 self.producao.status = ProducaoStatus.ON
@@ -63,12 +65,14 @@ class State:
                 self.producao.motivo = motivo
                 self.producao.ordem_codigo = ordem_codigo
                 self.producao.meta = int(meta or 0)
+                self.producao.modelo = modelo
 
     def desligar_producao(self, por=None, motivo=None):
         with self._lock:
             self.producao.status = ProducaoStatus.OFF
             self.producao.inicio_ts = None
             self.producao.meta = 0
+            self.producao.modelo = None
             self.producao.ordem_codigo = None
             self.producao.log_producao_id = None
             self.producao.alterada_por = por
@@ -81,6 +85,10 @@ class State:
     def get_meta(self) -> int:
         with self._lock:
             return int(getattr(self.producao, "meta", 0) or 0)
+    
+    def get_modelo(self) -> str | None:
+        with self._lock:
+            return getattr(self.producao, "modelo", None)
 
     def get_ordem_atual(self):
         with self._lock:

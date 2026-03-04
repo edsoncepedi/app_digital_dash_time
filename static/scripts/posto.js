@@ -105,6 +105,9 @@ function updateUI(s){
     if(s.mats_percent !== undefined){
         animarProgresso(s.mats_percent);
     }
+
+    document.getElementById("produzido").textContent = s.producao_atual ?? s.n_produtos ?? 0;
+    document.getElementById("meta").textContent = s.meta_producao ?? "--";
 }
 
 
@@ -229,4 +232,36 @@ socket.on('atualiza_status_producao', data => {
         bolinha.classList.add('status-armed');
     }
 
+});
+
+let servidorIndisponivel = false;
+
+async function checarPing() {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1000); // 1 segundo de limite
+
+    try {
+        const resp = await fetch("/ping", { signal: controller.signal });
+        clearTimeout(timeout);
+
+        if (!resp.ok) throw new Error(resp.status);
+
+        console.log("Servidor ok, recarregando...");
+        location.reload(); // só recarrega quando o servidor está realmente no ar
+    } catch (e) {
+        console.warn("Servidor indisponível, tentando novamente...");
+
+        if (!servidorIndisponivel) {
+            servidorIndisponivel = true;
+            mostrarPopup("Servidor indisponível. Tentando se reconectar!", "#dc3545", 9999999);
+        }
+
+        setTimeout(checarPing, 1000); // tenta de novo em 1s
+    }
+}
+
+// quando desconectar, ativa monitoramento
+socket.on("disconnect", () => {
+    console.warn("Socket.IO desconectado, iniciando checagem...");
+    checarPing();
 });

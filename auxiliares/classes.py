@@ -478,7 +478,7 @@ class Posto:
             id=self.id_posto,
             state=self._state_enum(),
             produto=self.produto_atual,
-            modelo="Proxy - CPD",
+            modelo="--",
             palete=self.palete_atual,
             n_produtos=self.contador_produtos,
             arrival=getv("arrival_time"),

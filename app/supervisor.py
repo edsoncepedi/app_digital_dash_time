@@ -30,6 +30,7 @@ class PostoSupervisor:
         
         # NOVAS VARIÁVEIS DE ESTADO GLOBAL
         self.meta_producao = 0 
+        self.modelo_atual = None
         self.timer_running = False
         self.timer_start_ts = None
         self.timer_accumulated = 0
@@ -154,15 +155,18 @@ class PostoSupervisor:
         # evento válido: entra na FSM normal
         posto.tratamento_dispositivo(payload)
 
-    def iniciar_producao(self, origem="sistema", ordem_codigo=None, meta_producao=0):
+    def iniciar_producao(self, origem="sistema", ordem_codigo=None, meta_producao=0, modelo=None):
         if self.state.producao_ligada():
             return  # idempotente
+
+        self.modelo_atual = modelo
 
         self.state.ligar_producao(
             por=origem,
             motivo="todos os operadores presentes",
             ordem_codigo=ordem_codigo,
-            meta=meta_producao
+            meta=meta_producao,
+            modelo=modelo
         )
 
         #Sinal Esteira Iniciada
@@ -310,6 +314,9 @@ class PostoSupervisor:
             mats_percent = 0
 
         d["mats_percent"] = mats_percent
+        d["producao_atual"] = snap.n_produtos
+        d["meta_producao"] = self.meta_producao
+        d["modelo"] = self.modelo_atual
 
         self._snapshots[snap.id] = snap  
         self.socketio.emit("posto/state_changed", d, room=f"posto:{snap.id}") 
@@ -449,5 +456,6 @@ class PostoSupervisor:
         self.iniciar_producao(
             origem="checkin",
             ordem_codigo=self.state.get_ordem_atual(),
-            meta_producao=self.state.get_meta()
+            meta_producao=self.state.get_meta(),
+            modelo=self.state.get_modelo()
         )

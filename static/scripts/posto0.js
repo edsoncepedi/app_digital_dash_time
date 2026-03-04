@@ -74,7 +74,7 @@ socket.on('atualiza_status_producao', data => {
 
 // Receber código do produto e preencher o campo automaticamente
 socket.on('add_produto_impresso', data => {
-const inputProduto = document.getElementById('produto');
+const inputProduto = document.getElementById('produto-input');
 inputProduto.value = data.codigo;
 mostrarResposta("Código de produto recebido!", "green");
 checkAndAdvance();
@@ -118,8 +118,8 @@ socket.on('palete_recebido', data => {
 // Função principal que lida com a navegação e envio após validação
 async function checkAndAdvance() {
     // Captura os valores dos campos
-    const produto = document.getElementById("produto").value.trim();
-    const palete = document.getElementById("palete").value.trim();
+    const produto = document.getElementById("produto-input").value.trim();
+    const palete = document.getElementById("palete-input").value.trim();
 
     // Se ambos os códigos forem válidos, envia para o backend
     if (verificaCodQrPrototipo(produto) && verificaCodQrPalete(palete)) {
@@ -142,11 +142,11 @@ async function checkAndAdvance() {
                 respostaDiv.textContent = resposta;
                 respostaDiv.style.color = "green";
 
-                const inputProduto = document.getElementById('produto');
+                const inputProduto = document.getElementById('produto-input');
 
                 // Limpando os campos
-                document.getElementById("produto").value = "";
-                document.getElementById("palete").value = "";
+                document.getElementById("produto-input").value = "";
+                document.getElementById("palete-input").value = "";
 
             // Se o palete já estiver vinculado
             } else if (resposta.includes("ERRO: PALETE JÁ VINCULADO")) {
@@ -154,17 +154,17 @@ async function checkAndAdvance() {
                 respostaDiv.textContent = resposta;
                 respostaDiv.style.color = "red";
                 // Limpa o campo de palete e manda o cursor para o campo de palete novamente
-                document.getElementById("palete").value = "";
-                document.getElementById("palete").focus();
+                document.getElementById("palete-input").value = "";
+                document.getElementById("palete-input").focus();
             // Para qualquer outro erro de associação.
             } else {
                 // Mostra a mensagem de erro
                 respostaDiv.textContent = resposta;
                 respostaDiv.style.color = "red";
                 // Limpa os campos e inicia novamente
-                document.getElementById("produto").value = "";
-                document.getElementById("palete").value = "";
-                document.getElementById("palete").disabled = true
+                document.getElementById("produto-input").value = "";
+                document.getElementById("palete-input").value = "";
+                document.getElementById("palete-input").disabled = true
             }
         } catch (error) {
             // Captura erro de rede ou problema na requisição
@@ -212,7 +212,7 @@ socket.on("connect", () => {
     socket.emit("join_posto", { posto: `posto_${POSTO_ID}` });
     socket.emit("posto/request_snapshot", { posto:`posto_${POSTO_ID}` });
     mostrarResposta("", "green");
-    document.getElementById("produto").value = "";
+    document.getElementById("produto-input").value = "";
     document.getElementById("palete").value = "";
     console.log("Socket.IO reconectado!");
 });
@@ -370,6 +370,9 @@ function updateUI(s){
     if(s.mats_percent !== undefined){
         animarProgresso(s.mats_percent);
     }
+
+    document.getElementById("produzido").textContent = s.producao_atual ?? s.n_produtos ?? 0;
+    document.getElementById("meta").textContent = s.meta_producao ?? "--";
 }
 
 // eventos

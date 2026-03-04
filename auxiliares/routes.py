@@ -178,6 +178,8 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
                     if meta_producao <= 0:
                         return jsonify(status="erro", mensagem="Meta inválida na ordem (<= 0)."), 400
                     
+                    modelo_atual = ordem_db.produto or "Modelo não especificado"
+
                     log_id = log_repo.criar(ordem_codigo, meta_producao)
                     
                     # 🔥 Marca ordem como em execução (evita reuso acidental)
@@ -195,6 +197,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
 
                 supervisor.state.armar_producao(
                     meta=meta_producao,
+                    modelo=modelo_atual,
                     ordem_codigo=ordem_codigo,
                     log_id=log_id,
                     por="painel",
