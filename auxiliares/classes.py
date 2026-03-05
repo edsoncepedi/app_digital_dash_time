@@ -215,6 +215,28 @@ class Posto:
         self.funcionario_imagem = None
 
         self.db_row_id_atual = None
+        self.db_row_id_ultima = None
+
+    def reset(self):
+        logger.info("[%s] Resetando estado do posto.", self.nome)
+
+        self.produto_atual = None
+        self.palete_atual = None
+
+        self.maquina_estado = 0
+        self.maquina_estado_anterior = 0
+
+        self.timestamp = {"BS": None, "BT1": None, "BT2": None, "BD": None}
+
+        self.BS_posterior = None
+        self.BD_backup = None
+
+        self.contador_produtos = 0
+
+        self.db_row_id_atual = None
+        self.db_row_id_ultima = None
+
+        self._notify()
     
     def insert_produto(self, produto):
         if verifica_cod_produto(produto):
@@ -246,8 +268,12 @@ class Posto:
         }
         self.df_historico = pd.concat([self.df_historico, pd.DataFrame([nova_linha])], ignore_index=True)
         self.salvarDadosLocais()
+        
         if self.db_row_id_atual is None:
-            self.db_row_id_atual = criar_linha_aberta(self.id_posto, palete=self.palete_atual)
+            self.db_row_id_atual = criar_linha_aberta(
+                self.id_posto,
+                palete=self.palete_atual
+            )
 
     def atualizar_tempo(self, produto: Optional[str], tipo_tempo: str, valor: float) -> None:
         valor = float(valor)
@@ -267,8 +293,12 @@ class Posto:
             self.salvarDadosLocais()
             logger.info("[%s] %s atualizado (%.2fs).", self.nome, tipo_tempo, valor)
 
-        if self.db_row_id_atual is not None:
-            atualizar_tempo_db(self.id_posto, self.db_row_id_atual, tipo_tempo, valor)
+        row_id = self.db_row_id_atual
+        if row_id is None and tipo_tempo in ("tempo_transferencia", "tempo_ciclo"):
+            row_id = self.db_row_id_ultima
+
+        if row_id is not None:
+            atualizar_tempo_db(self.id_posto, row_id, tipo_tempo, valor)
 
     def atualiza_produto(self, produto: str) -> None:
         if len(self.df_historico) == 0:
@@ -278,6 +308,7 @@ class Posto:
         self.df_historico.at[idx, "produto"] = str(produto)
         self.salvarDadosLocais()
         logger.info("[%s] Produto %s associado à linha %d.", self.nome, produto, idx)
+
         if self.db_row_id_atual is not None:
             atualizar_produto_db(self.id_posto, self.db_row_id_atual, produto)
 
@@ -333,7 +364,6 @@ class Posto:
             return None
 
         tempo_ciclo = round(sum(valores), 2)
-        self.contador_produtos += 1
         return tempo_ciclo
 
     # ------------------------------------------------------------------
@@ -387,11 +417,13 @@ class Posto:
 
                 if self.db_row_id_atual is not None:
                     fechar_linha(self.id_posto, self.db_row_id_atual)
+                    self.db_row_id_ultima = self.db_row_id_atual
                     self.db_row_id_atual = None
 
                 self.produto_atual = None
                 self.palete_atual = None
                 self.BD_backup = time.perf_counter()
+                self.contador_produtos += 1
                 self.atualizar_estado(0)
                 return
 

@@ -56,6 +56,15 @@ function enviarComando(comando) {
         payload.ordem = getOrdemSelecionada();
     }
 
+    if (comando === 'Restart') {
+        const ordemCodigo = getOrdemSelecionada();
+        if (!ordemCodigo) {
+            payload.ordem = null;
+        } else {
+            payload.ordem = ordemCodigo;
+        }
+    }
+
     fetch('/enviar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

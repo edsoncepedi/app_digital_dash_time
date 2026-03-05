@@ -13,6 +13,7 @@ from threading import Event
 from auxiliares.socketio_handlers import tem_cliente_associacao
 from auxiliares.configuracoes import cartao_palete
 from auxiliares.configuracoes import ultimo_posto_bios
+from auxiliares.db import get_sessionmaker, get_engine
 evento_resposta = Event()
 import numpy as np
 from dotenv import load_dotenv
@@ -26,8 +27,8 @@ print(f"Debug mode: {debug_mode}")
 
 Funcionario, Posto, SessaoTrabalho = inicializa_funcionario()
 
-db = Conectar_DB('funcionarios')  # deve retornar o engine
-SessionLocal = sessionmaker(bind=db)
+db = get_engine('funcionarios')  # deve retornar o engine
+SessionLocal = get_sessionmaker('funcionarios')
 log_repo = LogProducaoRepo(db)
 
 def configurar_rotas(app, mqttc, socketio, supervisor):
@@ -211,10 +212,14 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
                 ), 200
             
             elif comando == 'Restart':
+                ordem_codigo = dados.get("ordem")
                 supervisor.resetar_timer()
-                reiniciar_produtos()
-                reiniciar_sistema(debug=debug_mode)
-                return jsonify(status='sucesso', mensagem='Sistema reiniciado.'), 200
+                if not ordem_codigo:
+                    reiniciar_sistema(debug=True)
+                    return jsonify(status='sucesso', mensagem='Sistema reiniciado. Sem salvar arquivos'), 200
+                else:
+                    reiniciar_sistema(id=ordem_codigo, debug=True)
+                return jsonify(status='sucesso', mensagem=f'Sistema reiniciado. Salvando arquivos da Ordem {ordem_codigo}'), 200
             
             elif comando == 'Stop':
                 # Lógica para reiniciar produtos
@@ -240,6 +245,8 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
 
                 supervisor.state.desligar_producao(por="painel_controle", motivo="stop manual")
                 mqttc.publish("ControleProducao_DD", "Stop")
+
+                reiniciar_sistema(id=ordem_codigo, debug=debug_mode)
 
                 return jsonify(status='sucesso', mensagem='Produção encerrada'), 200
             

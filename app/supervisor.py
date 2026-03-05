@@ -3,10 +3,13 @@ from dataclasses import asdict
 import time
 import math # Importado para a lógica de projeção
 from typing import Optional
-from auxiliares.utils import reiniciar_sistema, posto_anterior, posto_proximo, posto_nome_para_id
+from auxiliares.utils import posto_anterior, posto_proximo, posto_nome_para_id, salvar_dados_ordem, apagar_arquivos_sistema
 from auxiliares.banco_post import consulta_funcionario_posto, Conectar_DB
 from auxiliares.log_producao_repo import LogProducaoRepo
 import logging
+from auxiliares.db import get_sessionmaker, get_engine
+from auxiliares.models_ordens import OrdemProducao
+from datetime import datetime
 
 # -----------------------------------------------------------------------------
 # LOGGING
@@ -17,6 +20,9 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+
+db_func = get_engine('funcionarios')  # deve retornar o engine
+SessionLocal = get_sessionmaker('funcionarios')
 
 class PostoSupervisor:
     def __init__(self, postos, socketio, mqttc, state, vision_state=None):
@@ -39,7 +45,7 @@ class PostoSupervisor:
 
         self._bt2_reject_cooldown = {}  
 
-        self._log_repo = LogProducaoRepo(Conectar_DB("funcionarios"))
+        self._log_repo = LogProducaoRepo(db_func)
 
 
         for p in self.postos.values():
@@ -47,6 +53,23 @@ class PostoSupervisor:
             p.mudanca_estado = self.mudanca_estado
             p.transporte = self.transporte
 
+
+    def reset(self):
+        logger.info("Resetando estado do Supervisor...")
+
+        self.meta_producao = 0
+        self.modelo_atual = None
+
+        self.timer_running = False
+        self.timer_start_ts = None
+        self.timer_accumulated = 0
+
+        self._snapshots.clear()
+        self._bt2_reject_cooldown.clear()
+
+        # reset postos
+        for posto in self.postos.values():
+            posto.reset()
      # -------------------------------------------------------------------------
      # ALERTA DIRECIONADO PARA UM POSTO (ROOM)
      # -------------------------------------------------------------------------
@@ -154,6 +177,11 @@ class PostoSupervisor:
 
         # evento válido: entra na FSM normal
         posto.tratamento_dispositivo(payload)
+    
+    def _enviar_stop_mqtt_delay(self, delay:int = 2):
+        time.sleep(delay)
+        if self.mqttc:
+            self.mqttc.publish("ControleProducao_DD", "Stop")
 
     def iniciar_producao(self, origem="sistema", ordem_codigo=None, meta_producao=0, modelo=None):
         if self.state.producao_ligada():
@@ -181,6 +209,45 @@ class PostoSupervisor:
         self.resetar_timer()
         self.iniciar_timer(meta_producao)
 
+    def encerrar_producao(self, motivo_encerra="sistema"):
+        self.parar_timer()
+        # 🔥 Finaliza log_producao por meta atingida
+        log_id = self.state.get_log_producao_id()
+        if log_id:
+            try:
+                self._log_repo.finalizar(log_id, motivo_encerra)
+            except Exception:
+                pass
+
+        # Finaliza ordem no banco (se existir)
+        ordem_codigo = self.state.get_ordem_atual()
+        if ordem_codigo:
+            session = SessionLocal()
+            try:
+                ordem_db = session.query(OrdemProducao).filter_by(codigo_op=ordem_codigo).first()
+                if ordem_db:
+                    ordem_db.status = "FINALIZADA"
+                    ordem_db.atualizada_em = datetime.utcnow()
+                    session.commit()
+            except Exception:
+                session.rollback()
+            finally:
+                session.close()
+
+        self.emit_alerta_global(mensagem="Produção Finalizada.", cor="#ff0000", tempo=5000)
+
+        salvar_dados_ordem(ordem_codigo)
+        apagar_arquivos_sistema()
+
+        if self.mqttc:
+            self.socketio.start_background_task(self._enviar_stop_mqtt_delay)
+        
+        self.state.desligar_producao(
+            por="sistema",
+            motivo=motivo_encerra
+        )
+        
+        self.reset()
 
     # --- MÉTODOS AUXILIARES NOVOS ---
     def atualizar_operador_posto(self, posto_nome, dados_operador):
@@ -337,25 +404,8 @@ class PostoSupervisor:
             # --- FIM DO UPDATE ---
 
             if self.meta_producao > 0 and snap.n_produtos >= self.meta_producao: 
-                self.parar_timer()
-
-                # 🔥 Finaliza log_producao por meta atingida
-                log_id = self.state.get_log_producao_id()
-                if log_id:
-                    try:
-                        self._log_repo.finalizar(log_id, "meta atingida")
-                    except Exception:
-                        pass
-
-                self.state.desligar_producao(
-                    por="sistema",
-                    motivo="meta atingida"
-                )
-                if self.mqttc:
-                    self.mqttc.publish("ControleProducao_DD", "Stop")
-                self.socketio.emit("timer/control", {"action": "stop"}) 
-                self.socketio.emit("alerta_geral", {'mensagem': "Produção Finalizada. Reinicie o Sistema", 'cor': "#00b377", 'tempo': 1000}) 
-                #reiniciar_sistema(debug=False, dados=False, backup=True)
+                self.encerrar_producao(motivo_encerra="meta atingida")
+      
 
     def iniciar_timer(self, meta):
         self.meta_producao = meta

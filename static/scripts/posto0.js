@@ -81,7 +81,7 @@ checkAndAdvance();
 });
 
 socket.on('add_palete_lido', data => {
-const inputPalete = document.getElementById('palete');
+const inputPalete = document.getElementById('palete-input');
 inputPalete.value = data.codigo;
 mostrarResposta("Código de palete recebido!", "green");
 checkAndAdvance();
@@ -107,7 +107,7 @@ function mostrarPopup(mensagem, cor = '#333', duracao_ms = 3000) {
 }
 
 socket.on('palete_recebido', data => {
-    const palete = document.getElementById("palete").value.trim();
+    const palete = document.getElementById("palete-input").value.trim();
     if (verificaCodQrPalete(palete)) {
         socket.emit('campo_palete', { palete: true });
     }else {
@@ -213,7 +213,7 @@ socket.on("connect", () => {
     socket.emit("posto/request_snapshot", { posto:`posto_${POSTO_ID}` });
     mostrarResposta("", "green");
     document.getElementById("produto-input").value = "";
-    document.getElementById("palete").value = "";
+    document.getElementById("palete-input").value = "";
     console.log("Socket.IO reconectado!");
 });
 

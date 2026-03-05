@@ -149,43 +149,11 @@ def reiniciar_produtos() -> None:
             except OSError as e:
                 logger.exception("Erro ao remover %s: %s", path, e)
 
+def salvar_dados_ordem(id: str) -> None:
+    horario = datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
+    pasta_backup = os.path.join(PROJECT_DIR, f"{id}_{horario}")
+    os.makedirs(pasta_backup, exist_ok=True)
 
-def reiniciar_sistema(debug: bool = False, salvar_dados: bool = True, backup: bool = False) -> None:
-    """
-    Remove arquivos de trabalho (csv/xlsx/pkl) e opcionalmente cria pasta de backup e/ou
-    pasta de dados com cópias antes de apagar.
-
-    Melhorias:
-    - não sobrescreve parâmetro com variável local
-    - paths consistentes (rodando de onde for)
-    - logs e tratamento de erro melhores
-    """
-    pasta_backup = None
-    pasta_dados = None
-
-    if not debug:
-        horario = datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-
-        if backup:
-            pasta_backup = os.path.join(PROJECT_DIR, f"backup_{horario}")
-            os.makedirs(pasta_backup, exist_ok=True)
-
-        if salvar_dados:
-            pasta_dados = os.path.join(PROJECT_DIR, f"dados_{horario}")
-            os.makedirs(pasta_dados, exist_ok=True)
-
-            lista_dados = glob.glob(os.path.join(PROJECT_DIR, "*.xlsx"))
-            lista_dados.extend([os.path.join(PROJECT_DIR, "historico_associacoes.csv")])
-
-            for dado in lista_dados:
-                if os.path.exists(dado):
-                    try:
-                        destino = os.path.join(pasta_dados, os.path.basename(dado))
-                        shutil.copy2(dado, destino)
-                    except OSError as e:
-                        logger.exception("Falha ao copiar dado %s -> %s: %s", dado, pasta_dados, e)
-
-    # Arquivos a remover
     padroes = [
         os.path.join(PROJECT_DIR, "*.csv"),
         os.path.join(PROJECT_DIR, "*.xlsx"),
@@ -201,18 +169,43 @@ def reiniciar_sistema(debug: bool = False, salvar_dados: bool = True, backup: bo
 
     for arquivo in arquivos:
         try:
-            if (not debug) and backup and pasta_backup:
-                destino_backup = os.path.join(pasta_backup, os.path.basename(arquivo))
-                shutil.copy2(arquivo, destino_backup)
-                print(f"Backup feito: {arquivo} → {destino_backup}")
+            destino_backup = os.path.join(pasta_backup, os.path.basename(arquivo))
+            shutil.copy2(arquivo, destino_backup)
+            print(f"Backup feito: {arquivo} → {destino_backup}")
+        except OSError as e:
+            logger.exception("Erro ao remover %s: %s", arquivo, e)
+            print(f"Erro ao remover {arquivo}: {e}")
 
+def apagar_arquivos_sistema() -> None:
+    padroes = [
+        os.path.join(PROJECT_DIR, "*.csv"),
+        os.path.join(PROJECT_DIR, "*.xlsx"),
+        os.path.join(PROJECT_DIR, "objetos_memory", "*.xlsx"),
+        os.path.join(PROJECT_DIR, "auxiliares", "*.xlsx"),
+        os.path.join(PROJECT_DIR, "auxiliares", "*.csv"),
+        os.path.join(PROJECT_DIR, "objetos_memory", "*.pkl"),
+    ]
+
+    arquivos = []
+    for p in padroes:
+        arquivos.extend(glob.glob(p))
+    
+    for arquivo in arquivos:
+        try:
             os.remove(arquivo)
             print(f"Removido: {arquivo}")
         except OSError as e:
             logger.exception("Erro ao remover %s: %s", arquivo, e)
             print(f"Erro ao remover {arquivo}: {e}")
-
+    
     reiniciar_produtos()
+
+def reiniciar_sistema(id: str = "Default", debug: bool = False) -> None:
+
+    if not debug:
+        salvar_dados_ordem(id)
+    
+    apagar_arquivos_sistema()
 
     # Parando o Script
     sys.exit(1)
