@@ -11,7 +11,7 @@ import pandas as pd
 
 from auxiliares.configuracoes import ultimo_posto_bios, cartao_palete
 from auxiliares.utils import verifica_palete_nfc, verifica_cod_produto
-from auxiliares.banco_post import inserir_dados, consulta_funcionario_posto  # noqa: F401  # mantido para uso futuro
+from auxiliares.banco_post import inserir_dados, consulta_funcionario_posto  # noqa: F401  # mantido para uso futuroF
 from auxiliares.utils import imprime_qrcode, gera_codigo_produto
 from auxiliares.posto_repo import criar_linha_aberta, atualizar_tempo_db, atualizar_produto_db, fechar_linha
 
@@ -217,6 +217,8 @@ class Posto:
         self.db_row_id_atual = None
         self.db_row_id_ultima = None
 
+        self.ordem_producao_atual = None
+
     def reset(self):
         logger.info("[%s] Resetando estado do posto.", self.nome)
 
@@ -235,6 +237,8 @@ class Posto:
 
         self.db_row_id_atual = None
         self.db_row_id_ultima = None
+
+        self.ordem_producao_atual = None
 
         self._notify()
     
@@ -310,7 +314,7 @@ class Posto:
         logger.info("[%s] Produto %s associado à linha %d.", self.nome, produto, idx)
 
         if self.db_row_id_atual is not None:
-            atualizar_produto_db(self.id_posto, self.db_row_id_atual, produto)
+            atualizar_produto_db(self.id_posto, self.db_row_id_atual, produto, self.ordem_producao_atual)
 
 
     # ------------------------------------------------------------------

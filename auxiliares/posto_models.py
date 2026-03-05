@@ -18,6 +18,7 @@ def make_posto_model(table_name: str):
         # produto pode começar NULL e ser preenchido depois (seu caso)
         produto = Column(String(80), nullable=True)
         palete = Column(String(80), nullable=True)     # opcional, mas recomendo
+        ordem_producao = Column(String(80), nullable=True)
 
         # seus 5 tempos (mesmos nomes do CSV)
         tempo_preparo = Column(Float, nullable=True)

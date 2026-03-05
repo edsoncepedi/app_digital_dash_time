@@ -203,6 +203,7 @@ class PostoSupervisor:
 
         for posto in self.postos.values():
             posto.inicia_prod_tempo()
+            posto.ordem_producao_atual=ordem_codigo
             posto._notify()
 
         self.emit_alerta_global("Atenção! Produção Iniciada!", cor="#00b377", tempo=3000)
@@ -246,7 +247,7 @@ class PostoSupervisor:
             por="sistema",
             motivo=motivo_encerra
         )
-        
+
         self.reset()
 
     # --- MÉTODOS AUXILIARES NOVOS ---
