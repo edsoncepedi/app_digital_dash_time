@@ -123,6 +123,12 @@ socket.on("disconnect", () => {
 
 socket.on("palete_detectado", data => {
 
+    const paleteInput = document.getElementById("palete-input");
+
+    if(paleteInput){
+        paleteInput.value = data.palete;
+    }
+
     mostrarPopup(
         `Palete ${data.palete} detectado`,
         "#22c55e",
@@ -132,6 +138,17 @@ socket.on("palete_detectado", data => {
 })
 
 socket.on("produto_associado", data => {
+
+    const produtoInput = document.getElementById("produto-input");
+    const paleteInput  = document.getElementById("palete-input");
+
+    if(produtoInput){
+        produtoInput.value = data.produto;
+    }
+
+    if(paleteInput){
+        paleteInput.value = data.palete;
+    }
 
     mostrarPopup(
         `Produto ${data.produto} associado ao palete ${data.palete}`,

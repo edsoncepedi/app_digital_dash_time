@@ -68,6 +68,8 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
                 if not debug_mode:
                     imprime_qrcode(produto)
 
+                mqttc.publish(f"rastreio_nfc/esp32/posto_0/dispositivo", "BT1")
+                
                 classes.associacoes.associa(palete, produto)
 
                 supervisor.postos['posto_0'].insert_produto(produto)
@@ -91,7 +93,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
         else:
             socketio.emit('aviso_ao_operador_assoc', {'mensagem': "Produção não inciada. Não foi processado nenhum comando.", 'cor': "#dc3545", 'tempo': 3000})
             return f"Produção não inciada. Não foi processado nenhum comando."
-
+    """
     @socketio.on('campo_palete')
     def campo_palete(data):
         cod_palete = data['palete']
@@ -103,7 +105,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
             socketio.emit('add_produto_impresso', {'codigo': produto})
         else:
             socketio.emit('aviso_ao_operador_assoc', {'mensagem': "Antes de gerar um produto. Insira o palete no posto", 'cor': "#ffc107", 'tempo': 2000})
-        #evento_resposta.set()
+        #evento_resposta.set()"""
 
     #Rota para o acesso da interface de controle
     @app.route("/api/q_postos", methods=["GET"])
