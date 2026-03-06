@@ -1,12 +1,15 @@
 
 from flask import app, current_app, render_template, request, jsonify, url_for, flash, redirect
+from sqlalchemy import delete
 from auxiliares.banco_post import Conectar_DB
 from auxiliares.associacao import inicializa_funcionario
 from sqlalchemy.orm import sessionmaker
 from auxiliares.classes import verifica_estado_producao
 from datetime import datetime
 from threading import Event
+import logging
 
+logger = logging.getLogger(__name__)
 evento_resposta = Event()
 debug_mode=True
 Funcionario, Posto, SessaoTrabalho = inicializa_funcionario()
@@ -111,26 +114,44 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
 
     @app.route("/deletar_funcionario/<int:func_id>", methods=["POST"])
     def deletar_funcionario(func_id):
+
         senha = request.form.get("senha_confirmacao", "")
 
         if senha != current_app.config["ADMIN_DELETE_PASSWORD"]:
             flash("Senha de exclusão inválida.", "error")
             return redirect(url_for("cadastro_funcionario"))
 
-        # 🔴 se chegou aqui, senha está correta → pode excluir
         session = SessionLocal()
+
         try:
-            func = session.query(Funcionario).get(func_id)
+            func = session.get(Funcionario, func_id)
+
             if not func:
                 flash("Funcionário não encontrado.", "error")
                 return redirect(url_for("cadastro_funcionario"))
 
+            # 🔴 apagar sessões de trabalho
+            result = session.execute(
+                delete(SessaoTrabalho)
+                .where(SessaoTrabalho.funcionario_id == func_id)
+            )
+
+            logger.info(f"{result.rowcount} sessões deletadas do funcionário {func_id}")
+
+            # 🔴 apagar funcionário
             session.delete(func)
+
             session.commit()
-            flash("Funcionário excluído com sucesso.", "success")
-        except Exception as e:
+
+            logger.info(f"Funcionário {func_id} excluído com sucesso")
+
+            flash("Funcionário e sessões excluídos com sucesso.", "success")
+
+        except Exception:
             session.rollback()
+            logger.exception(f"Erro ao excluir funcionário {func_id}")
             flash("Erro ao excluir funcionário.", "error")
+
         finally:
             session.close()
 

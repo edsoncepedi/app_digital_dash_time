@@ -154,15 +154,17 @@
                                     {{ f.rfid_tag }}
                                 </td>
                                 <td class="col-acoes">
-                                    <form action="{{ url_for('deletar_funcionario', func_id=f.id) }}"
+                                    <form class="form-excluir-func"
                                         method="POST"
-                                        class="form-excluir-func"
+                                        action="{{ url_for('deletar_funcionario', func_id=f.id) }}"
                                         data-nome="{{ f.nome }}">
-                                        <!-- Campo oculto para enviar a senha -->
+
                                         <input type="hidden" name="senha_confirmacao">
+
                                         <button type="submit" class="btn btn-danger">
                                             Excluir
                                         </button>
+
                                     </form>
                                 </td>
                             </tr>
