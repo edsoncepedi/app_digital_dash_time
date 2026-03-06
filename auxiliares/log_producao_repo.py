@@ -14,7 +14,8 @@ class LogProducaoRepo:
             log = LogProducao(
                 ordem_codigo=ordem_codigo,
                 meta=meta,
-                status="ARMED"
+                status="ARMED",
+                armada_em=datetime.utcnow()
             )
             session.add(log)
             session.commit()
