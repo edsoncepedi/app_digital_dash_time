@@ -39,8 +39,6 @@ function mostrarResposta(mensagem, cor) {
 // Conexão com o servidor Socket.IO
 const socket = io();
 
-socket.emit('pagina_associacao_connect');
-
 socket.on('atualiza_status_producao', data => {
 
     const status = data.status;
@@ -72,21 +70,6 @@ socket.on('atualiza_status_producao', data => {
 
 });
 
-// Receber código do produto e preencher o campo automaticamente
-socket.on('add_produto_impresso', data => {
-const inputProduto = document.getElementById('produto-input');
-inputProduto.value = data.codigo;
-mostrarResposta("Código de produto recebido!", "green");
-checkAndAdvance();
-});
-
-socket.on('add_palete_lido', data => {
-const inputPalete = document.getElementById('palete-input');
-inputPalete.value = data.codigo;
-mostrarResposta("Código de palete recebido!", "green");
-checkAndAdvance();
-});
-
 socket.on('aviso_ao_operador_assoc', data => {
     mostrarPopup(data.mensagem, data.cor, data.tempo);
 });
@@ -104,75 +87,6 @@ function mostrarPopup(mensagem, cor = '#333', duracao_ms = 3000) {
     setTimeout(() => {
         popup.style.display = 'none';
     }, duracao_ms);
-}
-
-socket.on('palete_recebido', data => {
-    const palete = document.getElementById("palete-input").value.trim();
-    if (verificaCodQrPalete(palete)) {
-        socket.emit('campo_palete', { palete: true });
-    }else {
-        socket.emit('campo_palete', { palete: false });
-    }
-});
-
-// Função principal que lida com a navegação e envio após validação
-async function checkAndAdvance() {
-    // Captura os valores dos campos
-    const produto = document.getElementById("produto-input").value.trim();
-    const palete = document.getElementById("palete-input").value.trim();
-
-    // Se ambos os códigos forem válidos, envia para o backend
-    if (verificaCodQrPrototipo(produto) && verificaCodQrPalete(palete)) {
-        try {
-            const response = await fetch("/associacao/submit", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ produto, palete }) // Dados enviados como JSON
-            });
-
-            const resposta = await response.text();
-            const respostaDiv = document.getElementById("resposta");
-
-            // Analisa a resposta recebida do servidor
-            // Se a resposta for um Sucesso
-            if (resposta.includes("Sucesso")) {
-                // Mostra o aviso de concluído no Front
-                respostaDiv.textContent = resposta;
-                respostaDiv.style.color = "green";
-
-                const inputProduto = document.getElementById('produto-input');
-
-                // Limpando os campos
-                document.getElementById("produto-input").value = "";
-                document.getElementById("palete-input").value = "";
-
-            // Se o palete já estiver vinculado
-            } else if (resposta.includes("ERRO: PALETE JÁ VINCULADO")) {
-                // Mostra a mensagem de erro
-                respostaDiv.textContent = resposta;
-                respostaDiv.style.color = "red";
-                // Limpa o campo de palete e manda o cursor para o campo de palete novamente
-                document.getElementById("palete-input").value = "";
-                document.getElementById("palete-input").focus();
-            // Para qualquer outro erro de associação.
-            } else {
-                // Mostra a mensagem de erro
-                respostaDiv.textContent = resposta;
-                respostaDiv.style.color = "red";
-                // Limpa os campos e inicia novamente
-                document.getElementById("produto-input").value = "";
-                document.getElementById("palete-input").value = "";
-                document.getElementById("palete-input").disabled = true
-            }
-        } catch (error) {
-            // Captura erro de rede ou problema na requisição
-            const respostaDiv = document.getElementById("resposta");
-            respostaDiv.textContent = "Erro ao enviar dados: " + error;
-            respostaDiv.style.color = "red";
-        }
-    }
 }
 
 let servidorIndisponivel = false;
@@ -206,6 +120,26 @@ socket.on("disconnect", () => {
     console.warn("Socket.IO desconectado, iniciando checagem...");
     checarPing();
 });
+
+socket.on("palete_detectado", data => {
+
+    mostrarPopup(
+        `Palete ${data.palete} detectado`,
+        "#22c55e",
+        2000
+    )
+
+})
+
+socket.on("produto_associado", data => {
+
+    mostrarPopup(
+        `Produto ${data.produto} associado ao palete ${data.palete}`,
+        "#22c55e",
+        3000
+    )
+
+})
 
 // quando reconectar, cancela monitoramento
 socket.on("connect", () => {

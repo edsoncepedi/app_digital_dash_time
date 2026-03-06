@@ -30,13 +30,23 @@ const fmtSec = (v) => (v==null || Number.isNaN(v)) ? '--' : (typeof v==='number'
 // Constrói um card de posto
 function buildCard(n){
   const el = document.createElement('div');
-  el.className = 'card posto';
+  el.className = 'card posto posto-link';
   el.id = `posto_${n}`;
+
+  // aqui faz o redirecionamento
+  el.onclick = () => {
+      window.location.href = `/posto/${n}`;
+  };
+
   const initialTitle = 'Arrival';
+
   el.innerHTML = `
+    <div class="posto-link-icon">↗</div>
+
     <div class="tag ${titleClass(initialTitle)}" id="p${n}-tag">
       <div class="head" id="p${n}-head">${initialTitle}</div>
     </div>
+
     <div style="height:56px"></div>
 
     <div class="posto-label">Posto ${n}</div>
@@ -52,8 +62,8 @@ function buildCard(n){
         <span class="operator-name" id="p${n}-op-nome">Não alocado</span>
       </div>
     </div>
+  `;
 
-    `;
   return el;
 }
 

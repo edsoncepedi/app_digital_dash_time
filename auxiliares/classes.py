@@ -249,7 +249,12 @@ class Posto:
         else:
             print(f"[ERRO] - Erro ao tentar associar produto ao posto {self.id_posto}")
 
+    def set_palete_atual(self, palete):
+        self.palete_atual = palete
 
+    def get_palete_atual(self):
+        return self.palete_atual
+        
     def add_funcionario(self, nome, imagem):
         self.funcionario_nome = nome
         self.funcionario_imagem = imagem  

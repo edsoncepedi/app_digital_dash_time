@@ -5,49 +5,30 @@ from auxiliares.utils import verifica_cod_produto
 from datetime import datetime
 from time import sleep
 import threading
-from flask_socketio import disconnect
-from flask import request
 
-clientes_associacao = set()  # para guardar sids da página de associação
-
-def tem_cliente_associacao():
-    #Se tiver cliente retorna True senão False
-    return len(clientes_associacao) >= 1
 
 def configurar_socketio_handlers(socketio, supervisor):
-    # Super função que é chamada assim que um cliente se conecta
+
+    # cliente conectou
     @socketio.on('connect')
     def handle_connect():
-        pass
+        print("Cliente conectado!")
 
-    @socketio.on('pagina_associacao_connect')
-    def pagina_associacao_connect():
-        sid = request.sid
-        global clientes_associacao
-
-        if len(clientes_associacao) >= 1:
-            print(f"Cliente {sid} tentou conectar na associação, mas já tem cliente. Desconectando.")
-            disconnect()
-        else:
-            clientes_associacao.add(sid)
-            print(f"Cliente {sid} conectado na página de associação.")
-
+    # cliente desconectou
     @socketio.on('disconnect')
     def on_disconnect():
-        sid = request.sid
-        if sid in clientes_associacao:
-            clientes_associacao.remove(sid)
-            print(f"Cliente {sid} desconectado da página de associação.")
+        print("Cliente desconectado")
 
+    # envia status da produção periodicamente
     def enviar_status_producao_periodicamente():
         while True:
             try:
                 socketio.emit("atualiza_status_producao", {
-                    "status": supervisor.state.get_producao_status()  # "OFF" | "ARMED" | "ON"
+                    "status": supervisor.state.get_producao_status()
                 })
             except Exception as e:
                 print("Erro ao enviar status:", e)
 
-            socketio.sleep(1)  # ⚠️ importante (eventlet)
+            socketio.sleep(1)
 
     socketio.start_background_task(enviar_status_producao_periodicamente)

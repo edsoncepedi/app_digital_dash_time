@@ -3,7 +3,7 @@ from auxiliares.classes import verifica_estado_producao
 from auxiliares.configuracoes import ultimo_posto_bios
 
 
-def front_mqtt_assoc(message, socketio, state):
+def front_mqtt_assoc(message, socketio, state, supervisor):
     # Separa a mensagem em topico e payload
     topic = message.topic
     payload = message.payload.decode()
@@ -17,7 +17,11 @@ def front_mqtt_assoc(message, socketio, state):
     if sistema == "rastreio_nfc" and embarcado == "esp32" and dispositivo == "posto_0" and agente == "dispositivo":
         if verifica_palete_nfc(payload):
             if state.producao_ligada():
-                socketio.emit('add_palete_lido', {'codigo': cartao_palete[payload]})
+                palete = cartao_palete[payload]
+
+                supervisor.postos['posto_0'].set_palete_atual(palete)
+
+                socketio.emit('palete_detectado', {'palete': palete})
                 return
             elif state.producao_armada():
                 socketio.emit('aviso_ao_operador_assoc', {'mensagem': "Produção armada. Retire o palete do Posto 0 e Espere o início da produção.", 'cor': "#ffc107", 'tempo': 3000})

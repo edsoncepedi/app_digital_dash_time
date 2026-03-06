@@ -10,7 +10,6 @@ from datetime import datetime
 from time import sleep
 import auxiliares.classes as classes
 from threading import Event
-from auxiliares.socketio_handlers import tem_cliente_associacao
 from auxiliares.configuracoes import cartao_palete
 from auxiliares.configuracoes import ultimo_posto_bios
 from auxiliares.db import get_sessionmaker, get_engine
@@ -50,8 +49,45 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
             comando = dados.get('comando')
             # Se o comando for de impressão de produto chama-se a função de gerar produto e depois ele é impresso
             if comando == 'imprime_produto':
-                socketio.emit('palete_recebido')
-            return f"Comando Executado: {comando}"
+
+                palete = supervisor.postos['posto_0'].get_palete_atual()
+
+                if not palete:
+                    socketio.emit(
+                        'aviso_ao_operador_assoc',
+                        {
+                            'mensagem': "Nenhum palete presente no posto 0.",
+                            'cor': "#ffc107",
+                            'tempo': 2000
+                        }
+                    )
+                    return "Sem palete"
+
+                produto = gera_codigo_produto()
+
+                if not debug_mode:
+                    imprime_qrcode(produto)
+
+                classes.associacoes.associa(palete, produto)
+
+                supervisor.postos['posto_0'].insert_produto(produto)
+
+                horario = datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
+
+                associacao_dado = pd.DataFrame([{
+                    'palete': palete,
+                    'produto': produto,
+                    'horario': horario
+                }])
+
+                inserir_dados(associacao_dado, 'paletes', 'associacoes')
+
+                socketio.emit("produto_associado", {
+                    "produto": produto,
+                    "palete": palete
+                })
+
+                return f"Produto {produto} associado ao palete {palete}"
         else:
             socketio.emit('aviso_ao_operador_assoc', {'mensagem': "Produção não inciada. Não foi processado nenhum comando.", 'cor': "#dc3545", 'tempo': 3000})
             return f"Produção não inciada. Não foi processado nenhum comando."
@@ -256,72 +292,12 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
         else:
             return jsonify(status='erro', mensagem='Tipo de dados inválido.'), 400
 
-
-
-    # Rota para associação de palete. Ela é chamada quando o produto e palete já foram encaminhados pelo javascript.
-    @app.route('/associacao/submit', methods=['POST'])
-    def submit():
-        # Data processa a requisição e recolhe os dados enviados pelo javascript via json.
-        data = request.get_json(silent=True)
-
-        # Armazenando os dados recebidos em variaveis do python.
-        produto = data.get('produto')
-        palete = data.get('palete')
-
-        # Se a produção não foi iniciada Retorna para a interface a mensagem
-        if not supervisor.state.producao_ligada():
-            return f"A produção ainda não foi iniciada. Não é possível associar."
-
-        # Se o código de produto for inválido
-        if not verifica_cod_produto(produto):
-            return f"ERRO: CÓDIGO LIDO NÃO É PRODUTO"
-
-        # Faz a consulta na tabela para verificar quais paletes estão cadastrados.
-        lista_paletes = classes.associacoes.paletes_assoc()
-        # Se a palete recebido não estiver presente na lista de paletes vinculados o código segue.
-        # Se estiver presente é retornada uma mensagem de erro para o javascript.
-        if palete not in lista_paletes:
-            try:
-                # Guarda numa lista interna quais foram os produtos gerados.
-                memoriza_produto(produto)
-
-                classes.associacoes.associa(palete, produto)
-                supervisor.postos['posto_0'].insert_produto(produto)
-                mqttc.publish(f"rastreio_nfc/esp32/posto_0/dispositivo", "BT1")
-                #classes.adicionarProduto(produto)
-
-                #Inicia a contagem do tempo de tranporte no posto 0
-                #classes.tratamento_palete(palete, "posto_0", mqttc)
-
-                #mqttc.publish(f"rastreio_nfc/esp32/posto_0/dispositivo", "BD")
-                # Coleta a data e hora, do instante quando os dados foram recebidos, para armazenar nas tabelas
-                horario = str(datetime.now().strftime("%d/%m/%Y, %H:%M:%S"))
-                # Modelo para enviar os dados para a tabela de Associações.
-                associacao_dado = pd.DataFrame([{
-                    'palete': palete,
-                    'produto': produto,
-                    'horario': horario
-                }])
-
-                inserir_dados(associacao_dado, 'paletes', 'associacoes')
-
-                print(f"Recebido: {palete} - Associados a {produto}")
-                # Retorna para o javascript uma mensagem de sucesso da associação.
-                return f"Associação Realizada com Sucesso: {produto}-{palete}"
-            except Exception as e:
-                # Para evitar problemas, os comandos estão em um try e se ocorrer um erro é retornada uma mensagem de erro.
-                return f"ERRO: Associação não realizada : {e}"
-        else:
-            return f"ERRO: PALETE JÁ VINCULADO"
-
     @app.route("/posto/<int:posto_id>")
     def posto_operador(posto_id):
         if posto_id >= ultimo_posto_bios + 1:
             return "Posto inválido.", 404
-        elif posto_id == 0:
-            sleep(1)
-            if not tem_cliente_associacao():
-                return render_template("posto0.html", posto_id=posto_id)
-            else:
-                return "Já existe um Cliente de Associação Conectado!!!"
+
+        if posto_id == 0:
+            return render_template("posto0.html", posto_id=posto_id)
+
         return render_template("posto.html", posto_id=posto_id)

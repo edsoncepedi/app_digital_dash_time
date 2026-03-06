@@ -10,7 +10,7 @@ def configurar_mqtt_handlers(mqtt, socketio, supervisor, state):
     @mqtt.on_message()
     def handle_mqtt_message(client, userdata, message):
         try:
-            front_mqtt_assoc(message, socketio, state)
+            front_mqtt_assoc(message, socketio, state, supervisor)
         except Exception as e:
             print(f"[MQTT] - Front Assoc: {e}")
 
