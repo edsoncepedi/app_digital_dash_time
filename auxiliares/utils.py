@@ -109,7 +109,7 @@ def imprime_qrcode(code: str) -> None:
     - logs com exceção real
     """
     host = os.getenv("IP_IMPRESSORA")  # ajuste no seu .env
-    port = 6101
+    port = int(os.getenv("PORTA_IMPRESSORA") or 6101)
 
     if not host:
         logger.error("IP_IMPRESSORA não está definido no .env")
