@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+
+<title>Dashboard</title>
+
+<link rel="icon" type="image/png"
+href="{{ url_for('static', filename='img/favicon.png') }}">
+
+<link rel="stylesheet"
+href="{{ url_for('static', filename='css/dashboard_producao.css') }}">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+<body>
+
+<!-- TOPBAR (igual ao resto do sistema) -->
+
+<header class="topbar">
+
+<div class="topbar-inner">
+
+<div class="brand">Dashboard</div>
+
+<nav class="nav">
+
+<a href="/supervisorio">Supervisório</a>
+
+<a href="/cadastro_funcionario">Funcionários</a>
+
+<a href="/controle">Painel de Controle</a>
+
+<a href="/ordens">Ordens de Produção</a>
+
+<a href="/dashboard_producao">Dashboard</a>
+
+</nav>
+
+</div>
+
+</header>
+
+<div class="wrap">
+
+<!-- KPIs -->
+
+<div class="kpis">
+
+<div class="card">
+
+<div class="title">Total Ordens</div>
+
+<div id="totalOrdens" class="value">0</div>
+
+</div>
+
+<div class="card">
+
+<div class="title">Finalizadas</div>
+
+<div id="finalizadas" class="value">0</div>
+
+</div>
+
+<div class="card">
+
+<div class="title">Armadas</div>
+
+<div id="armadas" class="value">0</div>
+
+</div>
+
+<div class="card">
+
+<div class="title">Operadores Ativos</div>
+
+<div id="operadoresAtivos" class="value">0</div>
+
+</div>
+
+</div>
+
+<br>
+
+<!-- GRAFICO SESSOES -->
+
+<div class="card">
+
+<div class="title">Sessões por Posto</div>
+
+<canvas id="graficoPostos"></canvas>
+
+</div>
+
+<br>
+
+<!-- LOG PRODUÇÃO -->
+
+<div class="card">
+
+<div class="title">Log de Produção</div>
+
+<div class="table-wrapper">
+
+<table id="tabelaLog">
+
+<thead>
+
+<tr>
+<th class="col-id">ID</th>
+<th class="col-ordem">Ordem</th>
+<th class="col-status">Status</th>
+<th class="col-data">Armada</th>
+<th class="col-data">Inicio</th>
+<th class="col-data">Fim</th>
+</tr>
+
+</thead>
+
+<tbody></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+<br>
+
+<!-- SESSÕES -->
+
+<div class="card">
+
+<div class="title">Sessões de Trabalho</div>
+
+<div class="table-wrapper">
+
+<table id="tabelaSessoes">
+
+<thead>
+
+<tr>
+<th>Funcionário</th>
+<th>Posto</th>
+<th>Entrada</th>
+<th>Saída</th>
+<th>Duração</th>
+</tr>
+
+</thead>
+
+<tbody></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+<br>
+
+<!-- EXPERIENCIA -->
+
+<div class="card">
+
+<div class="title">Experiência Operador × Produto</div>
+
+<div class="toolbar">
+
+<label>Operador</label>
+
+<select id="filtroOperador"></select>
+
+<label>Produto</label>
+
+<select id="filtroProduto"></select>
+
+</div>
+
+<br>
+
+<canvas id="graficoExperiencia"></canvas>
+
+<div class="table-wrapper">
+
+<table id="tabelaExperiencia">
+
+<thead>
+
+<tr>
+<th>Operador</th>
+<th>Produto</th>
+<th>Horas</th>
+</tr>
+
+</thead>
+
+<tbody></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+<script src="{{ url_for('static', filename='scripts/dashboard_producao.js') }}"></script>
+
+</body>
+
+</html>
