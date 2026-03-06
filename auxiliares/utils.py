@@ -10,6 +10,7 @@ import socket
 import sys
 from datetime import date, datetime
 from typing import Optional, Tuple
+import zipfile
 
 from dotenv import load_dotenv
 
@@ -150,15 +151,20 @@ def reiniciar_produtos() -> None:
                 logger.exception("Erro ao remover %s: %s", path, e)
 
 def salvar_dados_ordem(id: str) -> None:
-    horario = datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
 
-    # pasta geral onde TODOS os backups vão ficar
-    pasta_geral = os.path.join(PROJECT_DIR, "dados_producao")
-    os.makedirs(pasta_geral, exist_ok=True)
+    agora = datetime.now()
 
-    # pasta específica da ordem
-    pasta_backup = os.path.join(pasta_geral, f"{id}_{horario}")
-    os.makedirs(pasta_backup, exist_ok=True)
+    ano = agora.strftime("%Y")
+    mes = agora.strftime("%m")
+    horario = agora.strftime("%d_%m_%Y_%H_%M_%S")
+
+    # pasta base de produção
+    pasta_base = os.path.join(PROJECT_DIR, "dados_producao", ano, mes)
+    os.makedirs(pasta_base, exist_ok=True)
+
+    # nome do zip
+    nome_zip = f"{id}_{horario}.zip"
+    caminho_zip = os.path.join(pasta_base, nome_zip)
 
     padroes = [
         os.path.join(PROJECT_DIR, "*.csv"),
@@ -173,14 +179,22 @@ def salvar_dados_ordem(id: str) -> None:
     for p in padroes:
         arquivos.extend(glob.glob(p))
 
-    for arquivo in arquivos:
-        try:
-            destino_backup = os.path.join(pasta_backup, os.path.basename(arquivo))
-            shutil.copy2(arquivo, destino_backup)
-            print(f"Backup feito: {arquivo} → {destino_backup}")
-        except OSError as e:
-            logger.exception("Erro ao copiar %s: %s", arquivo, e)
-            print(f"Erro ao copiar {arquivo}: {e}")
+    try:
+        with zipfile.ZipFile(caminho_zip, 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
+            for arquivo in arquivos:
+
+                # mantém estrutura relativa no zip
+                arcname = os.path.relpath(arquivo, PROJECT_DIR)
+
+                zipf.write(arquivo, arcname)
+
+                print(f"Adicionado ao zip: {arquivo}")
+
+        print(f"\n📦 Backup compactado criado: {caminho_zip}")
+
+    except Exception as e:
+        logger.exception("Erro ao gerar zip: %s", e)
+        print(f"Erro ao gerar zip: {e}")
 
 def apagar_arquivos_sistema() -> None:
     padroes = [
