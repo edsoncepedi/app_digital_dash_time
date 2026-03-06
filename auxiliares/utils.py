@@ -151,7 +151,13 @@ def reiniciar_produtos() -> None:
 
 def salvar_dados_ordem(id: str) -> None:
     horario = datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-    pasta_backup = os.path.join(PROJECT_DIR, f"{id}_{horario}")
+
+    # pasta geral onde TODOS os backups vão ficar
+    pasta_geral = os.path.join(PROJECT_DIR, "dados_producao")
+    os.makedirs(pasta_geral, exist_ok=True)
+
+    # pasta específica da ordem
+    pasta_backup = os.path.join(pasta_geral, f"{id}_{horario}")
     os.makedirs(pasta_backup, exist_ok=True)
 
     padroes = [
@@ -173,8 +179,8 @@ def salvar_dados_ordem(id: str) -> None:
             shutil.copy2(arquivo, destino_backup)
             print(f"Backup feito: {arquivo} → {destino_backup}")
         except OSError as e:
-            logger.exception("Erro ao remover %s: %s", arquivo, e)
-            print(f"Erro ao remover {arquivo}: {e}")
+            logger.exception("Erro ao copiar %s: %s", arquivo, e)
+            print(f"Erro ao copiar {arquivo}: {e}")
 
 def apagar_arquivos_sistema() -> None:
     padroes = [
