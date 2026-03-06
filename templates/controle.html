@@ -48,7 +48,7 @@
             <div class="card-header">
                 <div>
                     <div class="card-title">Configuração da produção</div>
-                    <div class="card-subtitle">Informe a quantidade planejada antes de iniciar o sistema.</div>
+                    <div class="card-subtitle">Selecione a ordem de produção.</div>
                 </div>
             </div>
 
@@ -80,19 +80,6 @@
                         disabled
                     >
                 </div>
-
-                <div class="campo">
-                    <label for="valor-inteiro">Quantidade planejada (manual)</label>
-                    <input
-                        type="number"
-                        id="valor-inteiro"
-                        name="valor_inteiro"
-                        min="1"
-                        step="1"
-                        placeholder="(opcional) - será removido"
-                        disabled
-                    >
-                </div>
             </div>
 
             <!-- Botões -->
@@ -109,7 +96,7 @@
             </div>
 
             <!-- Status de envio -->
-            <div id="status">Status: <span>aguardando envio...</span></div>
+            <div id="status"></div>
         </div>
 
         <!-- Bloco: alocação de operadores -->
@@ -120,13 +107,13 @@
             <div class="linha-campos">
                 {% for posto in postos %}
                 <div class="campo">
-                    <label for="posto_{{ posto.id }}">{{ posto.nome }}</label>
+                    <label for="posto_{{ posto.id }}">{{ posto.nome | posto }}</label>
                     <select id="posto_{{ posto.id }}" name="posto_{{ posto.id }}">
                         <option value="">-- Selecionar funcionário --</option>
                         {% for f in funcionarios %}
                             <option value="{{ f.id }}"
                                 {% if posto.funcionario_id == f.id %}selected{% endif %}>
-                                {{ f.nome }} ({{ f.rfid_tag }})
+                                {{ f.nome }}
                             </option>
                         {% endfor %}
                     </select>

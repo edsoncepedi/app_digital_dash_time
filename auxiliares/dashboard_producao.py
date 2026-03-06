@@ -125,3 +125,21 @@ def rotas_dashboard(app):
         session.close()
 
         return jsonify(dados)
+
+    @app.route("/api/operadores_ativos")
+    def api_operadores_ativos():
+
+        session = SessionLocal()
+
+        try:
+
+            total = session.execute(text("""
+                SELECT COUNT(DISTINCT funcionario_id)
+                FROM sessoes_trabalho
+                WHERE horario_saida IS NULL
+            """)).scalar()
+
+            return jsonify({"operadores": total})
+
+        finally:
+            session.close()

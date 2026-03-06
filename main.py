@@ -21,6 +21,7 @@ from app.supervisor import PostoSupervisor
 from app.socketio_gateway import register_socketio_handlers
 from state import State
 from auxiliares.posto_repo import init_postos_models
+from auxiliares.utils import formatar_posto
 
 from vision_state import VisionStateStore
 
@@ -35,6 +36,7 @@ def create_app():
     #Configurações Sistema Funcionário
     app.config['UPLOAD_FOLDER'] = 'static/funcionarios'
     app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
+    app.jinja_env.filters["posto"] = formatar_posto
     app.secret_key = 'chave-secreta'
 
     # Configurações do MQTT

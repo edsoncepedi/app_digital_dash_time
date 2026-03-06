@@ -66,6 +66,15 @@ def verifica_palete(texto: str) -> bool:
         return False
     return bool(_RE_PALETE.match(texto.strip()))
 
+def formatar_posto(nome):
+    if not nome:
+        return ""
+
+    m = re.search(r'(\d+)', str(nome))
+    if m:
+        return f"Posto {m.group(1)}"
+
+    return nome
 
 def verifica_palete_nfc(palete: str) -> bool:
     """

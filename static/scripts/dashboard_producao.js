@@ -24,6 +24,14 @@ async function carregarDados(){
 
 }
 
+async function carregarOperadoresAtivos(){
+
+    const resp = await fetch("/api/operadores_ativos")
+    const data = await resp.json()
+
+    document.getElementById("operadoresAtivos").innerText = data.operadores
+}
+
 function atualizarCards(logs){
 
     document.getElementById("totalOrdens").innerText = logs.length
@@ -80,7 +88,7 @@ function tabelaSessoes(sessoes){
         <td>${formatarPosto(s.posto_nome)}</td>
         <td>${formatarData(s.horario_entrada)}</td>
         <td>${formatarData(s.horario_saida)}</td>
-        <td>${s.duracao_segundos ?? ""}</td>
+        <td>${formatarDuracao(s.duracao_segundos) ?? ""}</td>
         `
 
         tbody.appendChild(tr)
@@ -91,7 +99,7 @@ function tabelaSessoes(sessoes){
 
 function graficoPostos(sessoes){
 
-    const contagem={}
+    const contagem = {}
 
     sessoes.forEach(s=>{
 
@@ -102,20 +110,50 @@ function graficoPostos(sessoes){
 
     })
 
-    const ctx=document.getElementById("graficoPostos")
+    // ordena pelos números do posto
+    const postosOrdenados = Object.keys(contagem)
+        .sort((a,b)=>{
+            const na = parseInt(a.match(/\d+/))
+            const nb = parseInt(b.match(/\d+/))
+            return na - nb
+        })
+
+    const labels = postosOrdenados.map(p => formatarPosto(p))
+    const valores = postosOrdenados.map(p => contagem[p])
+
+    const ctx = document.getElementById("graficoPostos")
 
     if(chartPostos) chartPostos.destroy()
-
     chartPostos = new Chart(ctx,{
 
         type:"bar",
 
         data:{
-            labels:Object.keys(contagem),
+            labels: labels,
             datasets:[{
                 label:"Sessões por posto",
-                data:Object.values(contagem)
+                data: valores
             }]
+        },
+
+        options:{
+            plugins:{
+                legend:{
+                    display:false
+                }
+            },
+            scales:{
+                x:{
+                    ticks:{
+                        color:"#e5e7eb"
+                    }
+                },
+                y:{
+                    ticks:{
+                        color:"#e5e7eb"
+                    }
+                }
+            }
         }
 
     })
@@ -243,6 +281,23 @@ function formatarPosto(posto){
     return posto
 }
 
+function formatarDuracao(segundos){
+
+    if(segundos === null || segundos === undefined) return "";
+
+    segundos = Math.floor(segundos);
+
+    const h = Math.floor(segundos / 3600);
+    const m = Math.floor((segundos % 3600) / 60);
+    const s = segundos % 60;
+
+    const hh = String(h).padStart(2,'0');
+    const mm = String(m).padStart(2,'0');
+    const ss = String(s).padStart(2,'0');
+
+    return `${hh}:${mm}:${ss}`;
+}
+
 document.getElementById("filtroOperador").addEventListener("change",()=>{
 
     atualizarTabelaExperiencia()
@@ -258,3 +313,4 @@ document.getElementById("filtroProduto").addEventListener("change",()=>{
 })
 
 carregarDados()
+carregarOperadoresAtivos()

@@ -103,15 +103,17 @@ socket.on('atualiza_status_producao', data => {
 });
 
 function atualizarStatus(data) {
-    const statusDiv = document.getElementById('status');
+
+    const el = document.getElementById("status")
 
     if (data.status === 'sucesso') {
-        statusDiv.textContent = data.mensagem || "✅ Mensagem enviada com sucesso.";
-        statusDiv.style.color = "#4ade80";
+        el.style.color = "#4ade80"
+        setStatus(data.mensagem || "Mensagem enviada com sucesso")
     } else {
-        statusDiv.textContent = "❌ Erro ao enviar.";
-        statusDiv.style.color = "#f97373";
+        el.style.color = "#f97373"
+        setStatus("Erro ao enviar comando")
     }
+
 }
 
 function mostrarErro() {
@@ -183,3 +185,20 @@ socket.on('aviso_lista_func', data => {
 socket.on('alerta_geral', data => {
     mostrarPopup(data.mensagem, data.cor, data.tempo);
 });
+
+let statusTimer = null
+
+function setStatus(msg){
+
+    const el = document.getElementById("status")
+
+    el.textContent = `Status: ${msg}`
+
+    if(statusTimer)
+        clearTimeout(statusTimer)
+
+    statusTimer = setTimeout(()=>{
+        el.textContent = ""
+    },5000)
+
+}
