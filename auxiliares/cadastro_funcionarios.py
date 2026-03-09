@@ -1,12 +1,10 @@
 
-from flask import app, current_app, render_template, request, jsonify, url_for, flash, redirect
+from flask import current_app, render_template, request, jsonify, url_for, flash, redirect
 from sqlalchemy import delete
 from auxiliares.banco_post import Conectar_DB
 from auxiliares.associacao import inicializa_funcionario
 from sqlalchemy.orm import sessionmaker
-from auxiliares.classes import verifica_estado_producao
 from datetime import datetime
-from zoneinfo import ZoneInfo
 from threading import Event
 import logging
 
@@ -166,7 +164,7 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
         acao = data.get('acao') # "entrada" ou "saida"
 
         session = SessionLocal()
-        agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
+        agora = datetime.now()
 
         try:
             # 1. Busca as configurações do Posto
@@ -259,9 +257,12 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
                     return jsonify({"status": "error", "message": "Nenhum operador logado", "autorizado": False}), 200
 
                 # Fecha a sessão
-                sessao_ativa.horario_saida = agora
-                delta = agora - sessao_ativa.horario_entrada
-                sessao_ativa.duracao_segundos = int(delta.total_seconds())
+                try:
+                    sessao_ativa.horario_saida = agora
+                    delta = agora - sessao_ativa.horario_entrada
+                    sessao_ativa.duracao_segundos = int(delta.total_seconds())
+                except Exception as e:
+                    print("⚠️ Falha ao calcular duração da sessão:", repr(e))
                 
                 # --- COMMIT AQUI ---
                 session.commit()

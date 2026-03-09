@@ -57,6 +57,8 @@ def separar_topico(s: str) -> Tuple[Optional[str], Optional[int]]:
         return letras.lower(), int(numeros)
     return None, None
 
+def agora_sp():
+    return datetime.now()
 
 def verifica_palete(texto: str) -> bool:
     """

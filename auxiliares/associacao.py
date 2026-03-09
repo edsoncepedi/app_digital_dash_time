@@ -3,6 +3,8 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from auxiliares.banco_post import Conectar_DB
 from auxiliares.configuracoes import ultimo_posto_bios
+from auxiliares.utils import agora_sp
+
 
 def inicializa_Base_assoc():
     db = Conectar_DB('paletes')
@@ -53,7 +55,7 @@ def inicializa_funcionario():
         id = Column(Integer, primary_key=True)
         funcionario_id = Column(Integer, ForeignKey('funcionario.id'), nullable=False)
         posto_nome = Column(String(50), nullable=False)
-        horario_entrada = Column(DateTime, default=func.now())
+        horario_entrada = Column(DateTime, default=agora_sp)
         horario_saida = Column(DateTime, nullable=True)
         duracao_segundos = Column(Integer, nullable=True)
 

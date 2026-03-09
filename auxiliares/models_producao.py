@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime
 from sqlalchemy.orm import declarative_base
 from datetime import datetime
+from auxiliares.utils import agora_sp
 
 Base = declarative_base()
 
@@ -24,4 +25,4 @@ class LogEventoProducao(Base):
     tempo_transferencia = Column(Float)
     tempo_ciclo = Column(Float)
 
-    data_registro = Column(DateTime, default=datetime.utcnow)
+    data_registro = Column(DateTime, default=agora_sp)

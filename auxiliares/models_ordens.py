@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, DateTime
 from sqlalchemy.orm import declarative_base
+from auxiliares.utils import agora_sp
 
 Base = declarative_base()
 
@@ -21,8 +22,8 @@ class OrdemProducao(Base):
     # ABERTA | EM_EXECUCAO | FINALIZADA
     status = Column(String(20), nullable=False, default="ABERTA")
 
-    criada_em = Column(DateTime, nullable=False, default=datetime.utcnow)
-    atualizada_em = Column(DateTime, nullable=False, default=datetime.utcnow)
+    criada_em = Column(DateTime, nullable=False, default=agora_sp)
+    atualizada_em = Column(DateTime, nullable=False, default=agora_sp)
 
 def inicializa_ordens(engine) -> None:
     """Cria a tabela no Postgres, se ainda não existir."""

@@ -1,6 +1,7 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.orm import declarative_base
+from auxiliares.utils import agora_sp
 
 BaseLogProducao = declarative_base()
 
@@ -14,7 +15,7 @@ class LogProducao(BaseLogProducao):
 
     status = Column(String(20), nullable=False, default="ARMED")
 
-    armada_em = Column(DateTime, default=datetime.utcnow)
+    armada_em = Column(DateTime, default=agora_sp)
     inicio_em = Column(DateTime, nullable=True)
     fim_em = Column(DateTime, nullable=True)
 

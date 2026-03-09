@@ -52,6 +52,9 @@ echo "🚀 Subindo novo container..."
 docker run -d --restart always \
    -p $PORT_HOST:$PORT_CONTAINER \
    -v $(pwd):/app \
+   -v /etc/localtime:/etc/localtime:ro \
+   -v /etc/timezone:/etc/timezone:ro \
+   -e TZ=America/Sao_Paulo \
    --log-driver json-file \
    --log-opt max-size=10m \
    --log-opt max-file=5 \
