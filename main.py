@@ -33,6 +33,13 @@ def create_app():
     app = Flask(__name__)
     app.url_map.strict_slashes = False
 
+    @app.after_request
+    def disable_cache(response):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+
     #Configurações Sistema Funcionário
     app.config['UPLOAD_FOLDER'] = 'static/funcionarios'
     app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
