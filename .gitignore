@@ -9,6 +9,7 @@ objetos_memory/
 env/
 venv/
 backup*/
+dados_producao/
 
 #arquivos
 produtos.txt
