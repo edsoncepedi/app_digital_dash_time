@@ -168,19 +168,6 @@ body{
     display: inline-block;
 }
 
-/* Estados */
-.status-on {
-    background: #22c55e; /* verde */
-}
-
-.status-off {
-    background: #f97373; /* vermelho */
-}
-
-.status-armed {
-    background: #f59e0b; /* amarelo */
-}
-
 /* ===================== TABELAS DASHBOARD ===================== */
 
 .table-wrapper table{
@@ -239,12 +226,25 @@ body{
 
 /* status colorido */
 
-.status-finalizada{
-    color:#22c55e;
-    font-weight:600;
+/* Status armado */
+.status-armed{
+    color: #d97706;
+    font-weight: bold;
 }
 
-.status-armed{
-    color:#f59e0b;
-    font-weight:600;
+/* Produção rodando */
+.status-on{
+    color: #2563eb;
+    font-weight: bold;
+}
+
+/* Finalizado */
+.status-finalizada{
+    color: #16a34a;
+    font-weight: bold;
+}
+
+/* fallback */
+.status-default{
+    color: #6b7280;
 }

@@ -39,10 +39,14 @@ function atualizarCards(logs){
     const finalizadas = logs.filter(l=>l.status=="FINALIZADA").length
 
     const armadas = logs.filter(l=>l.status=="ARMED").length
+    
+    const iniciadas = logs.filter(l=>l.status=="INICIADA").length
 
     document.getElementById("finalizadas").innerText = finalizadas
 
     document.getElementById("armadas").innerText = armadas
+
+    document.getElementById("iniciadas").innerText = iniciadas
 
 }
 
@@ -56,10 +60,18 @@ function tabelaLogs(logs){
 
         const tr = document.createElement("tr")
 
+        const statusClasses = {
+            "ARMED": "status-armed",
+            "ON": "status-on",
+            "FINALIZADA": "status-finalizada"
+        }
+
+        const statusClass = statusClasses[l.status] || "status-default"
+
         tr.innerHTML=`
         <td>${l.id}</td>
         <td>${l.ordem_codigo}</td>
-        <td class="${l.status === 'FINALIZADA' ? 'status-finalizada' : 'status-armed'}">
+        <td class="${statusClass}">
         ${l.status}
         </td>
         <td>${formatarData(l.armada_em)}</td>
