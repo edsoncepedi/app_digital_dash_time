@@ -189,6 +189,13 @@ class PostoSupervisor:
 
         self.modelo_atual = modelo
 
+        log_id = self.state.get_log_producao_id()
+        if log_id:
+            try:
+                self._log_repo.marcar_inicio(log_id)
+            except Exception:
+                pass
+
         self.state.ligar_producao(
             por=origem,
             motivo="todos os operadores presentes",
