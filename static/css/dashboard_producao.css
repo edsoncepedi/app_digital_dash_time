@@ -68,9 +68,33 @@ body{
 }
 
 .wrap{max-width:1280px;margin:24px auto;padding:0 12px}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
-.card{background: rgba(31,33,37,0.85);backdrop-filter: blur(4px);;border-radius:14px;padding:16px;box-shadow:0 4px 16px rgba(0,0,0,.25);font-size:20px}
-.title{font-weight:800;letter-spacing:.4px;margin-bottom:8px;color:var(--accent);text-transform:uppercase}
+.kpis{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
+    gap:16px;
+    min-height:110px;
+}
+.card{
+    background: rgba(31,33,37,0.85);
+    backdrop-filter: blur(4px);
+    border-radius:14px;
+    padding:16px;
+    box-shadow:0 4px 16px rgba(0,0,0,.25);
+    font-size:20px;
+
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+}
+.title{
+    font-weight:800;
+    letter-spacing:.4px;
+    margin-bottom:8px;
+    color:var(--accent);
+    text-transform:uppercase;
+    white-space:nowrap;
+    font-size:14px;
+}
 .value{font-size:36px;font-weight:800}
 .grid{
     display:grid;

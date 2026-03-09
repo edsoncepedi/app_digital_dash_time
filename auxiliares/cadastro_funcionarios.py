@@ -165,7 +165,7 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
         acao = data.get('acao') # "entrada" ou "saida"
 
         session = SessionLocal()
-        agora = datetime.now()
+        agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
 
         try:
             # 1. Busca as configurações do Posto
