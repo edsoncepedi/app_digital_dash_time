@@ -22,6 +22,15 @@ def front_mqtt_assoc(message, socketio, state, supervisor):
                 supervisor.postos['posto_0'].set_palete_atual(palete)
 
                 socketio.emit('palete_detectado', {'palete': palete})
+                socketio.emit(
+                    "aviso_ao_operador_assoc",
+                    {
+                        "mensagem": "Pressione o botão de impressão de Tag para iniciar o Checklist de Componentes.",
+                        "cor": "#202CEB",
+                        "tempo": None
+                    },
+                    room=f"posto:posto_0"
+                )
                 return
             elif state.producao_armada():
                 socketio.emit('aviso_ao_operador_assoc', {'mensagem': "Produção armada. Retire o palete do Posto 0 e Espere o início da produção.", 'cor': "#ffc107", 'tempo': 3000})

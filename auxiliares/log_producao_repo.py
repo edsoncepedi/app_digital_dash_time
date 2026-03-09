@@ -1,7 +1,6 @@
 from datetime import datetime
 from sqlalchemy.orm import sessionmaker
 from auxiliares.models_log_producao import LogProducao, BaseLogProducao
-from zoneinfo import ZoneInfo
 
 class LogProducaoRepo:
 
@@ -16,7 +15,7 @@ class LogProducaoRepo:
                 ordem_codigo=ordem_codigo,
                 meta=meta,
                 status="ARMED",
-                armada_em=datetime.now(ZoneInfo("America/Sao_Paulo"))
+                armada_em=datetime.now()
             )
             session.add(log)
             session.commit()
@@ -30,7 +29,7 @@ class LogProducaoRepo:
             log = session.get(LogProducao, log_id)
             if log:
                 log.status = "ON"
-                log.inicio_em = datetime.now(ZoneInfo("America/Sao_Paulo"))
+                log.inicio_em = datetime.now()
                 session.commit()
         finally:
             session.close()
@@ -41,7 +40,7 @@ class LogProducaoRepo:
             log = session.get(LogProducao, log_id)
             if log:
                 log.status = "FINALIZADA"
-                log.fim_em = datetime.now(ZoneInfo("America/Sao_Paulo"))
+                log.fim_em = datetime.now()
                 log.motivo_fim = motivo
                 session.commit()
         finally:

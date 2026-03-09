@@ -69,6 +69,11 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
                     imprime_qrcode(produto)
 
                 mqttc.publish(f"rastreio_nfc/esp32/posto_0/dispositivo", "BT1")
+
+                socketio.emit(
+                    "fechar_popup",
+                    room=f"posto:posto_0"
+                )
                 
                 classes.associacoes.associa(palete, produto)
 

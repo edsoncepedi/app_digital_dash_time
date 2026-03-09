@@ -31,6 +31,6 @@ def make_posto_model(table_name: str):
         # marca se essa “linha” ainda está em andamento
         aberta = Column(Boolean, nullable=False, default=True)
 
-        criado_em = Column(DateTime(timezone=True), server_default=datetime.now())
+        criado_em = Column(DateTime, default=datetime.now)
 
     return PostoHistorico

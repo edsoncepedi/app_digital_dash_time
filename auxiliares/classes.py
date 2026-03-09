@@ -184,6 +184,7 @@ class Posto:
     def __init__(self, posto: str, mqttc) -> None:
         self.id_posto = posto
         self.n_posto = int(posto.split("_")[1])
+        self.nome_formatado = f"Posto {self.n_posto}"
         self.posto_anterior: Optional[str] = f"posto_{self.n_posto - 1}" if self.n_posto > 0 else None
         self.posto_posterior: Optional[str] = (
             f"posto_{self.n_posto + 1}" if self.n_posto < ultimo_posto_bios else None
@@ -239,6 +240,16 @@ class Posto:
         self.db_row_id_ultima = None
 
         self.ordem_producao_atual = None
+
+        if self.id_posto == "posto_0":
+            try:
+                self.socketio.emit(
+                    "reset_campos_posto",
+                    room=f"posto:{posto_id}"
+                )
+            except Exception:
+                print("[ERRO] - Falha ao emitir reset_campos_posto para o frontend.")
+                pass
 
         self._notify()
     

@@ -86,6 +86,7 @@ class PostoSupervisor:
             )
         except Exception:
             pass
+
     
     def emit_alerta_global(self, mensagem: str, cor: str = "#ff0000", tempo: int = 2500):
         for posto_id in self.postos.keys():
@@ -337,19 +338,28 @@ class PostoSupervisor:
             if novo_estado == 3: # Entrou em Espera
                 if self.postos[posto_proximo(posto_id)].get_estado() == 0: # Idle
                     self.command(posto_id, "ativa_batedor")
+                    self.emit_alerta_posto(posto_id, f"Batedor do {self.postos[posto_id].nome_formatado} ativado", "#2563EB", 2500)
+                else:
+                    self.emit_alerta_posto(posto_id, f"Não foi possível ativar o batedor do {self.postos[posto_id].nome_formatado} porque o próximo posto não está em Idle.", "#ff0000", 2500)
         elif posto_id == self._ultimo_posto_id():
             if novo_estado == 3: # Entrou em Espera
                 self.command(posto_id, "ativa_batedor")
+                self.emit_alerta_posto(posto_id, f"Batedor do {self.postos[posto_id].nome_formatado} ativado", "#2563EB", 2500)
             elif novo_estado == 0: # Entrou em Idle
                 if self.postos[posto_anterior(posto_id)].get_estado() == 3: # Espera
                     self.command(posto_anterior(posto_id), "ativa_batedor")
+                    self.emit_alerta_posto(posto_anterior(posto_id), f"Batedor do {self.postos[posto_anterior(posto_id)].nome_formatado} ativado pelo {self.postos[posto_id].nome_formatado}", "#2563EB", 2500)
         else:
             if novo_estado == 3: # Entrou em Espera
                 if self.postos[posto_proximo(posto_id)].get_estado() == 0: # Idle
                     self.command(posto_id, "ativa_batedor")
+                    self.emit_alerta_posto(posto_id, f"Batedor do {self.postos[posto_id].nome_formatado} ativado", "#2563EB", 2500)
+                else:
+                    self.emit_alerta_posto(posto_id, f"Não foi possível ativar o batedor do {self.postos[posto_id].nome_formatado} porque o próximo posto não está em Idle.", "#ff0000", 2500)
             elif novo_estado == 0: # Entrou em Idle 
                 if self.postos[posto_anterior(posto_id)].get_estado() == 3: # Espera
                     self.command(posto_anterior(posto_id), "ativa_batedor")
+                    self.emit_alerta_posto(posto_anterior(posto_id), f"Batedor do {self.postos[posto_anterior(posto_id)].nome_formatado} ativado pelo {self.postos[posto_id].nome_formatado}", "#2563EB", 2500)
         
         # LÓGICA DE ATIVAÇÃO DA CÂMERA
         """

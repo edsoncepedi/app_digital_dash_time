@@ -78,15 +78,37 @@ socket.on('alerta_geral', data => {
     mostrarPopup(data.mensagem, data.cor, data.tempo);
 });
 
-function mostrarPopup(mensagem, cor = '#333', duracao_ms = 3000) {
+let popupTimeout = null;
+
+function mostrarPopup(mensagem, cor = '#333', duracao_ms = null) {
     const popup = document.getElementById('popup-aviso');
+
     popup.textContent = mensagem;
     popup.style.backgroundColor = cor;
     popup.style.display = 'block';
 
-    setTimeout(() => {
-        popup.style.display = 'none';
-    }, duracao_ms);
+    // limpa timeout anterior
+    if (popupTimeout) {
+        clearTimeout(popupTimeout);
+        popupTimeout = null;
+    }
+
+    // só cria timeout se tiver duração
+    if (typeof duracao_ms === "number" && duracao_ms > 0) {
+        popupTimeout = setTimeout(() => {
+            popup.style.display = 'none';
+        }, duracao_ms);
+    }
+}
+
+function fecharPopup(){
+    const popup = document.getElementById('popup-aviso');
+    popup.style.display = 'none';
+
+    if (popupTimeout) {
+        clearTimeout(popupTimeout);
+        popupTimeout = null;
+    }
 }
 
 let servidorIndisponivel = false;
@@ -347,4 +369,19 @@ socket.on("posto/log", (data)=>{
 
 socket.on("alerta_posto", (data) => {
     mostrarPopup(data.mensagem, data.cor, data.tempo);
+});
+
+socket.on("fechar_popup", () => {
+    fecharPopup();
+});
+
+socket.on("reset_campos_posto", () => {
+    const paleteInput = document.getElementById("palete-input");
+    const produtoInput = document.getElementById("produto-input");
+    if(paleteInput){
+        paleteInput.value = "";
+    }
+    if(produtoInput){
+        produtoInput.value = "";
+    }
 });
