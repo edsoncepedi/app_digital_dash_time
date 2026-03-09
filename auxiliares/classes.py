@@ -4,7 +4,6 @@ import os
 import logging
 import time
 from datetime import datetime
-from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Dict, Optional, List
 
@@ -141,7 +140,7 @@ class Tabela_Assoc:
         return [p for p in self.df_assoc["palete"].dropna().astype(str).tolist()]
 
     def associa(self, palete: str, produto: str) -> None:
-        horario = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m/%Y, %H:%M:%S")
+        horario = datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
         dado = pd.DataFrame([
             {"palete": palete, "produto": produto, "horario": horario}
         ])
@@ -274,7 +273,7 @@ class Posto:
             "tempo_espera": None,
             "tempo_transferencia": None,
             "tempo_ciclo": None,
-            "hora": datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m/%Y, %H:%M:%S"),
+            "hora": datetime.now().strftime("%d/%m/%Y, %H:%M:%S"),
         }
         self.df_historico = pd.concat([self.df_historico, pd.DataFrame([nova_linha])], ignore_index=True)
         self.salvarDadosLocais()

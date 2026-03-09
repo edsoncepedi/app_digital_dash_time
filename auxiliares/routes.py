@@ -7,7 +7,6 @@ from auxiliares.models_ordens import OrdemProducao
 from auxiliares.log_producao_repo import LogProducaoRepo
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
-from zoneinfo import ZoneInfo
 from time import sleep
 import auxiliares.classes as classes
 from threading import Event
@@ -75,7 +74,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
 
                 supervisor.postos['posto_0'].insert_produto(produto)
 
-                horario = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m/%Y, %H:%M:%S")
+                horario = datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
 
                 associacao_dado = pd.DataFrame([{
                     'palete': palete,
@@ -224,7 +223,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
                     
                     # 🔥 Marca ordem como em execução (evita reuso acidental)
                     ordem_db.status = "EM_EXECUCAO"
-                    ordem_db.atualizada_em = datetime.now(ZoneInfo("America/Sao_Paulo"))
+                    ordem_db.atualizada_em = datetime.now()
                     session.commit()
 
                 finally:
@@ -275,7 +274,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
                         ordem_db = session.query(OrdemProducao).filter_by(codigo_op=ordem_codigo).first()
                         if ordem_db:
                             ordem_db.status = "FINALIZADA"
-                            ordem_db.atualizada_em = datetime.now(ZoneInfo("America/Sao_Paulo"))
+                            ordem_db.atualizada_em = datetime.now()
                             session.commit()
                     except Exception:
                         session.rollback()

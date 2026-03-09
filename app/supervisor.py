@@ -10,7 +10,6 @@ import logging
 from auxiliares.db import get_sessionmaker, get_engine
 from auxiliares.models_ordens import OrdemProducao
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
 # -----------------------------------------------------------------------------
 # LOGGING
@@ -236,7 +235,7 @@ class PostoSupervisor:
                 ordem_db = session.query(OrdemProducao).filter_by(codigo_op=ordem_codigo).first()
                 if ordem_db:
                     ordem_db.status = "FINALIZADA"
-                    ordem_db.atualizada_em = datetime.now(ZoneInfo("America/Sao_Paulo"))
+                    ordem_db.atualizada_em = datetime.now()
                     session.commit()
             except Exception:
                 session.rollback()
