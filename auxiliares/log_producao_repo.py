@@ -1,6 +1,7 @@
 from datetime import datetime
 from sqlalchemy.orm import sessionmaker
 from auxiliares.models_log_producao import LogProducao, BaseLogProducao
+from zoneinfo import ZoneInfo
 
 class LogProducaoRepo:
 

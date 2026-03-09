@@ -6,6 +6,7 @@ from auxiliares.associacao import inicializa_funcionario
 from sqlalchemy.orm import sessionmaker
 from auxiliares.classes import verifica_estado_producao
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from threading import Event
 import logging
 

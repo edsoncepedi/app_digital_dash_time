@@ -7,6 +7,7 @@ from auxiliares.models_ordens import OrdemProducao
 from auxiliares.log_producao_repo import LogProducaoRepo
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from time import sleep
 import auxiliares.classes as classes
 from threading import Event
@@ -223,7 +224,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
                     
                     # 🔥 Marca ordem como em execução (evita reuso acidental)
                     ordem_db.status = "EM_EXECUCAO"
-                    ordem_db.atualizada_em = datetime.utcnow()
+                    ordem_db.atualizada_em = datetime.now(ZoneInfo("America/Sao_Paulo"))
                     session.commit()
 
                 finally:
