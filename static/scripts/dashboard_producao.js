@@ -174,25 +174,25 @@ function graficoPostos(sessoes){
 
 function popularFiltros(){
 
+    const selectOperador = document.getElementById("filtroOperador")
+    const selectProduto = document.getElementById("filtroProduto")
+
+    selectOperador.innerHTML = ""
+    selectProduto.innerHTML = ""
+
+    // opção TODOS
+    selectOperador.appendChild(new Option("Todos",""))
+    selectProduto.appendChild(new Option("Todos",""))
+
     const operadores = [...new Set(dadosExperiencia.map(d=>d.funcionario))]
     const produtos = [...new Set(dadosExperiencia.map(d=>d.produto))]
 
     operadores.forEach(o=>{
-
-        const opt=document.createElement("option")
-        opt.value=o
-        opt.text=o
-        document.getElementById("filtroOperador").appendChild(opt)
-
+        selectOperador.appendChild(new Option(o,o))
     })
 
     produtos.forEach(p=>{
-
-        const opt=document.createElement("option")
-        opt.value=p
-        opt.text=p
-        document.getElementById("filtroProduto").appendChild(opt)
-
+        selectProduto.appendChild(new Option(p,p))
     })
 
 }
@@ -215,51 +215,107 @@ function filtrarExperiencia(){
 
 function atualizarTabelaExperiencia(){
 
-    const dados=filtrarExperiencia()
+    const dados = filtrarExperiencia().sort((a, b) => {
+        if (a.funcionario !== b.funcionario) {
+            return a.funcionario.localeCompare(b.funcionario)
+        }
+        return a.produto.localeCompare(b.produto)
+    })
 
-    const tbody=document.querySelector("#tabelaExperiencia tbody")
-
-    tbody.innerHTML=""
+    const tbody = document.querySelector("#tabelaExperiencia tbody")
+    tbody.innerHTML = ""
 
     dados.forEach(d=>{
+        const tr = document.createElement("tr")
 
-        const tr=document.createElement("tr")
-
-        tr.innerHTML=`
+        tr.innerHTML = `
         <td>${d.funcionario}</td>
         <td>${d.produto}</td>
-        <td>${d.horas.toFixed(2)}</td>
+        <td>${formatarHoras(d.horas)}</td>
         `
 
         tbody.appendChild(tr)
-
     })
-
 }
 
 function atualizarGraficoExperiencia(){
 
-    const dados=filtrarExperiencia()
+    const dados = filtrarExperiencia()
 
-    const labels=dados.map(d=>d.produto)
-    const valores=dados.map(d=>d.horas)
+    if(dados.length === 0){
+        if(chartExperiencia) chartExperiencia.destroy()
+        return
+    }
 
-    const ctx=document.getElementById("graficoExperiencia")
+    const operadores = [...new Set(dados.map(d => d.funcionario))]
+    const produtos = [...new Set(dados.map(d => d.produto))]
+
+    const paleta = [
+        "#3b82f6", // azul
+        "#22c55e", // verde
+        "#f59e0b", // amarelo
+        "#ef4444", // vermelho
+        "#a855f7", // roxo
+        "#06b6d4", // ciano
+        "#f97316", // laranja
+        "#84cc16"  // limão
+    ]
+
+    const datasets = operadores.map((operador, index) => {
+        const data = produtos.map(produto => {
+            const item = dados.find(d =>
+                d.funcionario === operador && d.produto === produto
+            )
+            return item ? item.horas : 0
+        })
+
+        return {
+            label: operador,
+            data: data,
+            backgroundColor: paleta[index % paleta.length]
+        }
+    })
+
+    const ctx = document.getElementById("graficoExperiencia")
 
     if(chartExperiencia) chartExperiencia.destroy()
 
     chartExperiencia = new Chart(ctx,{
-
         type:"bar",
-
         data:{
-            labels:labels,
-            datasets:[{
-                label:"Horas de experiência",
-                data:valores
-            }]
+            labels: produtos,
+            datasets: datasets
+        },
+        options:{
+            responsive:true,
+            plugins:{
+                legend:{
+                    display:true,
+                    labels:{
+                        color:"#e5e7eb"
+                    }
+                }
+            },
+            scales:{
+                x:{
+                    ticks:{
+                        color:"#e5e7eb"
+                    },
+                    grid:{
+                        color:"rgba(255,255,255,0.06)"
+                    }
+                },
+                y:{
+                    beginAtZero:true,
+                    ticks:{
+                        color:"#e5e7eb"
+                    },
+                    grid:{
+                        color:"rgba(255,255,255,0.06)"
+                    }
+                }
+            }
         }
-
     })
 
 }
@@ -308,6 +364,23 @@ function formatarDuracao(segundos){
     const ss = String(s).padStart(2,'0');
 
     return `${hh}:${mm}:${ss}`;
+}
+
+function formatarHoras(horas){
+
+    if(horas === null || horas === undefined) return ""
+
+    const totalSeg = Math.floor(horas * 3600)
+
+    const h = Math.floor(totalSeg / 3600)
+    const m = Math.floor((totalSeg % 3600) / 60)
+    const s = totalSeg % 60
+
+    const hh = String(h).padStart(2,'0')
+    const mm = String(m).padStart(2,'0')
+    const ss = String(s).padStart(2,'0')
+
+    return `${hh}:${mm}:${ss}`
 }
 
 document.getElementById("filtroOperador").addEventListener("change",()=>{

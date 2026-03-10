@@ -59,7 +59,7 @@ def rotas_ordens(app, mqttc, socketio, supervisor):
                     flash(f"A OP {codigo_op} já existe.", "error")
                     return redirect(url_for("ordens"))
 
-                now = datetime.utcnow()
+                now = datetime.now()
                 op = OrdemProducao(
                     codigo_op=codigo_op,
                     produto=produto,

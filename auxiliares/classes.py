@@ -79,6 +79,7 @@ COLS_POSTO = [
     "tempo_espera",
     "tempo_transferencia",
     "tempo_ciclo",
+    "ordem_producao",
     "hora",
 ]
 
@@ -284,6 +285,7 @@ class Posto:
             "tempo_espera": None,
             "tempo_transferencia": None,
             "tempo_ciclo": None,
+            "ordem_producao": self.ordem_producao_atual,
             "hora": datetime.now().strftime("%d/%m/%Y, %H:%M:%S"),
         }
         self.df_historico = pd.concat([self.df_historico, pd.DataFrame([nova_linha])], ignore_index=True)

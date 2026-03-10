@@ -92,23 +92,25 @@ def rotas_dashboard(app):
         session = SessionLocal()
 
         query = text("""
-            SELECT
-                f.nome AS funcionario,
-                op.produto AS produto,
-                SUM(st.duracao_segundos)/3600.0 AS horas
-            FROM sessoes_trabalho st
+        SELECT
+            f.nome AS funcionario,
+            op.produto AS produto,
+            SUM(st.duracao_segundos)/3600.0 AS horas
 
-            JOIN funcionario f
-                ON f.id = st.funcionario_id
+        FROM sessoes_trabalho st
 
-            JOIN log_producao lp
-                ON st.horario_entrada BETWEEN lp.inicio_em AND lp.fim_em
+        JOIN funcionario f
+            ON f.id = st.funcionario_id
 
-            JOIN ordens_producao op
-                ON lp.ordem_codigo = op.codigo_op
+        JOIN log_producao lp
+            ON st.horario_entrada <= lp.fim_em
+            AND st.horario_saida >= lp.inicio_em
 
-            GROUP BY f.nome, op.produto
-            ORDER BY f.nome
+        JOIN ordens_producao op
+            ON lp.ordem_codigo = op.codigo_op
+
+        GROUP BY f.nome, op.produto
+        ORDER BY f.nome
         """)
 
         result = session.execute(query)
