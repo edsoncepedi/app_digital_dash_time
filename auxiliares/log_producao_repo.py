@@ -1,18 +1,19 @@
 from datetime import datetime
 from sqlalchemy.orm import sessionmaker
-from auxiliares.models_log_producao import LogProducao, BaseLogProducao
+from auxiliares.models_log_producao import LogProducao
+from auxiliares.db_base import Base
 
 class LogProducaoRepo:
 
     def __init__(self, engine):
-        BaseLogProducao.metadata.create_all(bind=engine)
+        Base.metadata.create_all(bind=engine)
         self.SessionLocal = sessionmaker(bind=engine)
 
-    def criar(self, ordem_codigo, meta):
+    def criar(self, ordem_id, meta):
         session = self.SessionLocal()
         try:
             log = LogProducao(
-                ordem_codigo=ordem_codigo,
+                ordem_id=ordem_id,
                 meta=meta,
                 status="ARMED",
                 armada_em=datetime.now()

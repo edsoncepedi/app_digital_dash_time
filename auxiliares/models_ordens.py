@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, DateTime
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, relationship
 from auxiliares.utils import agora_sp
+from auxiliares.db_base import Base
 
-Base = declarative_base()
 
 class OrdemProducao(Base):
     __tablename__ = "ordens_producao"
@@ -24,6 +24,8 @@ class OrdemProducao(Base):
 
     criada_em = Column(DateTime, nullable=False, default=agora_sp)
     atualizada_em = Column(DateTime, nullable=False, default=agora_sp)
+
+    logs = relationship("LogProducao", back_populates="ordem")
 
 def inicializa_ordens(engine) -> None:
     """Cria a tabela no Postgres, se ainda não existir."""

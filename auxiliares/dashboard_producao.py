@@ -3,6 +3,7 @@ from auxiliares.db import get_sessionmaker
 from auxiliares.models_log_producao import LogProducao
 from auxiliares.associacao import inicializa_funcionario
 from sqlalchemy import text
+from sqlalchemy.orm import joinedload
 
 Funcionario, Posto, SessaoTrabalho = inicializa_funcionario()
 
@@ -28,6 +29,7 @@ def rotas_dashboard(app):
         try:
             logs = (
                 session.query(LogProducao)
+                .options(joinedload(LogProducao.ordem))
                 .order_by(LogProducao.id.desc())
                 .limit(100)
                 .all()
@@ -36,7 +38,7 @@ def rotas_dashboard(app):
             return jsonify([
                 {
                     "id": l.id,
-                    "ordem_codigo": l.ordem_codigo,
+                    "ordem_codigo": l.ordem.codigo_op if l.ordem else None,
                     "meta": l.meta,
                     "status": l.status,
                     "armada_em": _dt(l.armada_em),
@@ -107,7 +109,7 @@ def rotas_dashboard(app):
             AND st.horario_saida >= lp.inicio_em
 
         JOIN ordens_producao op
-            ON lp.ordem_codigo = op.codigo_op
+            ON lp.ordem_id = op.id
 
         GROUP BY f.nome, op.produto
         ORDER BY f.nome

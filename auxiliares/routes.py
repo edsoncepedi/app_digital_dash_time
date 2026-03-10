@@ -28,7 +28,6 @@ Funcionario, Posto, SessaoTrabalho = inicializa_funcionario()
 
 db = get_engine('funcionarios')  # deve retornar o engine
 SessionLocal = get_sessionmaker('funcionarios')
-log_repo = LogProducaoRepo(db)
 
 def configurar_rotas(app, mqttc, socketio, supervisor):
     @app.route("/ping")
@@ -224,7 +223,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
                     
                     modelo_atual = ordem_db.produto or "Modelo não especificado"
 
-                    log_id = log_repo.criar(ordem_codigo, meta_producao)
+                    log_id = supervisor.log_repo.criar(ordem_db.id, meta_producao)
                     
                     # 🔥 Marca ordem como em execução (evita reuso acidental)
                     ordem_db.status = "EM_EXECUCAO"
@@ -269,7 +268,7 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
                 supervisor.parar_timer()
                 log_id = supervisor.state.get_log_producao_id()
                 if log_id:
-                    log_repo.finalizar(log_id, "stop manual")
+                    supervisor.log_repo.finalizar(log_id, "stop manual")
 
                 # Finaliza ordem no banco (se existir)
                 ordem_codigo = supervisor.state.get_ordem_atual()

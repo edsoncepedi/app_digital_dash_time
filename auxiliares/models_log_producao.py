@@ -1,22 +1,25 @@
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy.orm import declarative_base, relationship
+from auxiliares.models_ordens import OrdemProducao
 from auxiliares.utils import agora_sp
+from auxiliares.db_base import Base
 
-BaseLogProducao = declarative_base()
 
-class LogProducao(BaseLogProducao):
+class LogProducao(Base):
     __tablename__ = "log_producao"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True)
 
-    ordem_codigo = Column(String(50), nullable=False)
-    meta = Column(Integer, nullable=False)
+    ordem_id = Column(Integer, ForeignKey("ordens_producao.id"))
 
-    status = Column(String(20), nullable=False, default="ARMED")
+    meta = Column(Integer)
+
+    status = Column(String(20), default="ARMED")
 
     armada_em = Column(DateTime, default=agora_sp)
-    inicio_em = Column(DateTime, nullable=True)
-    fim_em = Column(DateTime, nullable=True)
+    inicio_em = Column(DateTime)
+    fim_em = Column(DateTime)
 
-    motivo_fim = Column(String(120), nullable=True)
+    motivo_fim = Column(String(120))
+
+    ordem = relationship(OrdemProducao)

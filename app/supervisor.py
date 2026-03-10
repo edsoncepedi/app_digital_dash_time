@@ -45,7 +45,7 @@ class PostoSupervisor:
 
         self._bt2_reject_cooldown = {}  
 
-        self._log_repo = LogProducaoRepo(db_func)
+        self.log_repo = LogProducaoRepo(db_func)
 
 
         for p in self.postos.values():
@@ -193,7 +193,7 @@ class PostoSupervisor:
         log_id = self.state.get_log_producao_id()
         if log_id:
             try:
-                self._log_repo.marcar_inicio(log_id)
+                self.log_repo.marcar_inicio(log_id)
             except Exception:
                 pass
 
@@ -224,7 +224,7 @@ class PostoSupervisor:
         log_id = self.state.get_log_producao_id()
         if log_id:
             try:
-                self._log_repo.finalizar(log_id, motivo_encerra)
+                self.log_repo.finalizar(log_id, motivo_encerra)
             except Exception:
                 pass
 

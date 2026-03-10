@@ -2,7 +2,8 @@
 from sqlalchemy.orm import sessionmaker
 from auxiliares.banco_post import Conectar_DB
 from auxiliares.configuracoes import ultimo_posto_bios
-from auxiliares.posto_models import BaseProducao, make_posto_model
+from auxiliares.posto_models import make_posto_model
+from auxiliares.db_base_prod import BaseProd
 
 DB_PRODUCAO = "producao"  # banco separado (não usar 'funcionarios')
 
@@ -18,7 +19,7 @@ def init_postos_models():
         POSTO_MODELS[nome] = make_posto_model(nome)
 
     # cria todas as tabelas definidas no Base
-    BaseProducao.metadata.create_all(bind=engine_producao)
+    BaseProd.metadata.create_all(bind=engine_producao)
 
 def criar_linha_aberta(posto_nome: str, palete: str | None = None) -> int:
     Model = POSTO_MODELS[posto_nome]
