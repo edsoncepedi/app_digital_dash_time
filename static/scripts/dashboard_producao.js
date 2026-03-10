@@ -147,7 +147,25 @@ function graficoPostos(sessoes){
             labels: labels,
             datasets:[{
                 label:"Sessões por posto",
-                data: valores
+                data: valores,
+
+                backgroundColor:[
+                    "#3b82f6",
+                    "#22c55e",
+                    "#f59e0b"
+                ],
+
+                borderRadius:10,
+                borderSkipped:false,
+
+                hoverBackgroundColor:[
+                    "#60a5fa",
+                    "#4ade80",
+                    "#fbbf24"
+                ],
+
+                barThickness:70,
+                maxBarThickness:90
             }]
         },
 
@@ -155,12 +173,32 @@ function graficoPostos(sessoes){
             plugins:{
                 legend:{
                     display:false
+                },
+                tooltip:{
+                    backgroundColor:"#111827",
+                    borderColor:"#374151",
+                    borderWidth:1,
+                    titleColor:"#93c5fd",
+                    bodyColor:"#e5e7eb",
+                    padding:10,
+                    displayColors:false
+                },
+                animation:{
+                    duration:600,
+                    easing:"easeOutQuart"
                 }
             },
             scales:{
                 x:{
                     ticks:{
-                        color:"#e5e7eb"
+                        color:"#e5e7eb",
+                        font:{
+                            size:13,
+                            weight:"500"
+                        }
+                    },
+                    grid:{
+                        display:false
                     }
                 },
                 y:{
@@ -171,12 +209,15 @@ function graficoPostos(sessoes){
                         precision:0
                     },
                     grid:{
-                        color:"rgba(255,255,255,0.06)"
+                        color:"rgba(255,255,255,0.05)"
                     },
                     title:{
                         display:true,
                         text:"Número de sessões",
-                        color:"#9ca3af"
+                        color:"#9ca3af",
+                        font:{
+                            size:12
+                        }
                     }
                 }
             }
