@@ -121,6 +121,24 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
         session = SessionLocal()
 
         if request.method == "POST":
+
+            # 🔒 BLOQUEIO DURANTE PRODUÇÃO
+            if supervisor.state.producao_ligada():
+                session.close()
+
+                socketio.emit(
+                    'aviso_lista_func',
+                    {
+                        'mensagem': "Não é permitido alterar operadores durante uma produção em andamento.",
+                        'cor': "#dc3545",
+                        'tempo': 2000
+                    }
+                )
+
+                sleep(1)
+
+                return redirect(url_for("painel_controle"))
+
             postos = session.query(Posto).order_by(Posto.id).all()
 
             # 1) Monta um mapa posto_id -> funcionario_id (do formulário)

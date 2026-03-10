@@ -4,9 +4,11 @@ from sqlalchemy import delete
 from auxiliares.banco_post import Conectar_DB
 from auxiliares.associacao import inicializa_funcionario
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
 from threading import Event
 import logging
+from datetime import datetime, timedelta
+import time
+import threading
 
 logger = logging.getLogger(__name__)
 evento_resposta = Event()
@@ -45,9 +47,54 @@ def rehidratar_operadores(supervisor):
     finally:
         session.close()
 
+def expirar_sessoes_loop(supervisor):
+
+    while True:
+
+        session = SessionLocal()
+
+        try:
+
+            limite = datetime.now() - timedelta(seconds=10)
+
+            sessoes = (
+                session.query(SessaoTrabalho)
+                .filter(
+                    SessaoTrabalho.horario_saida.is_(None),
+                    SessaoTrabalho.last_heartbeat.isnot(None),
+                    SessaoTrabalho.last_heartbeat < limite
+                )
+                .all()
+            )
+
+            for s in sessoes:
+                print(f"⚠️ Sessão expirada automaticamente: posto {s.posto_nome}")
+                s.horario_saida = datetime.now()
+
+                try:
+                    supervisor.atualizar_operador_posto(s.posto_nome, None)
+                except Exception as e:
+                    print("Falha atualizar supervisor:", e)
+
+            session.commit()
+
+        except Exception as e:
+            print("Erro expirar sessões:", e)
+            session.rollback()
+
+        finally:
+            session.close()
+
+        time.sleep(6)
+
 def rotas_funcionarios(app, mqttc, socketio, supervisor):
     
     rehidratar_operadores(supervisor)
+    threading.Thread(
+        target=expirar_sessoes_loop,
+        args=(supervisor,),
+        daemon=True
+    ).start()
 
     @app.route('/cadastro_funcionario', methods=['GET', 'POST'])
     def cadastro_funcionario():
@@ -224,7 +271,7 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
                     }), 200
 
                 # Cria a sessão
-                nova_sessao = SessaoTrabalho(funcionario_id=func.id, posto_nome=posto_nome, horario_entrada=agora)
+                nova_sessao = SessaoTrabalho(funcionario_id=func.id, posto_nome=posto_nome, horario_entrada=agora, last_heartbeat=agora)
                 session.add(nova_sessao)
                 
                 # --- COMMIT AQUI ---
@@ -275,5 +322,124 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
         except Exception as e:
             session.rollback()
             return jsonify({"status": "error", "message": str(e), "autorizado": False}), 500
+        finally:
+            session.close()
+
+    @app.route('/rfid_heartbeat', methods=['POST'])
+    def rfid_heartbeat():
+        data = request.get_json(silent=True) or {}
+        posto_nome = data.get("posto")
+        tag = data.get("tag")
+
+        session = SessionLocal()
+        agora = datetime.now()
+
+        try:
+            # busca sessão ativa do posto
+            sessao = (
+                session.query(SessaoTrabalho)
+                .filter(
+                    SessaoTrabalho.posto_nome == posto_nome,
+                    SessaoTrabalho.horario_saida.is_(None)
+                )
+                .first()
+            )
+
+            if not sessao:
+                return jsonify({
+                    "status": "no_session",
+                    "autorizado": False,
+                    "acao": "logout",
+                    "motivo": "Sessão não encontrada"
+                }), 200
+
+            # busca funcionário da sessão
+            func = session.get(Funcionario, sessao.funcionario_id)
+            if not func:
+                sessao.horario_saida = agora
+                session.commit()
+                supervisor.atualizar_operador_posto(posto_nome, None)
+
+                return jsonify({
+                    "status": "invalid_session",
+                    "autorizado": False,
+                    "acao": "logout",
+                    "motivo": "Funcionário da sessão não existe mais"
+                }), 200
+
+            # opcional: garante que a tag enviada ainda bate com a sessão
+            if tag and str(func.rfid_tag) != str(tag):
+                sessao.horario_saida = agora
+                delta = agora - sessao.horario_entrada
+                sessao.duracao_segundos = int(delta.total_seconds())
+                session.commit()
+                supervisor.atualizar_operador_posto(posto_nome, None)
+
+                return jsonify({
+                    "status": "tag_mismatch",
+                    "autorizado": False,
+                    "acao": "logout",
+                    "motivo": "Tag divergente da sessão ativa"
+                }), 200
+
+            # busca configuração atual do posto
+            posto_db = session.query(Posto).filter_by(nome=posto_nome).first()
+            if not posto_db:
+                sessao.horario_saida = agora
+                delta = agora - sessao.horario_entrada
+                sessao.duracao_segundos = int(delta.total_seconds())
+                session.commit()
+                supervisor.atualizar_operador_posto(posto_nome, None)
+
+                return jsonify({
+                    "status": "posto_invalido",
+                    "autorizado": False,
+                    "acao": "logout",
+                    "motivo": "Posto não cadastrado"
+                }), 200
+
+            # REVALIDAÇÃO DE PERMISSÃO
+            if posto_db.funcionario_id != func.id:
+                sessao.horario_saida = agora
+                delta = agora - sessao.horario_entrada
+                sessao.duracao_segundos = int(delta.total_seconds())
+                session.commit()
+
+                try:
+                    supervisor.atualizar_operador_posto(posto_nome, None)
+                    supervisor.emit_alerta_posto(
+                        posto_nome,
+                        f"Acesso removido para {func.nome}",
+                        cor="#ff0000",
+                        tempo=3500
+                    )
+                except Exception as e:
+                    print("Falha ao atualizar supervisor no heartbeat:", repr(e))
+
+                return jsonify({
+                    "status": "permission_revoked",
+                    "autorizado": False,
+                    "acao": "logout",
+                    "motivo": "Permissão removida para este posto"
+                }), 200
+
+            # tudo ok -> mantém sessão viva
+            sessao.last_heartbeat = agora
+            session.commit()
+
+            return jsonify({
+                "status": "ok",
+                "autorizado": True,
+                "acao": "manter"
+            }), 200
+
+        except Exception as e:
+            session.rollback()
+            return jsonify({
+                "status": "error",
+                "autorizado": False,
+                "message": str(e)
+            }), 500
+
         finally:
             session.close()

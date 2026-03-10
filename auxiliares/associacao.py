@@ -58,6 +58,7 @@ def inicializa_funcionario():
         horario_entrada = Column(DateTime, default=agora_sp)
         horario_saida = Column(DateTime, nullable=True)
         duracao_segundos = Column(Integer, nullable=True)
+        last_heartbeat = Column(DateTime)
 
     # cria a tabela se não existir (não apaga dados existentes)
     Base.metadata.create_all(bind=engine)

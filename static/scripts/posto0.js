@@ -87,6 +87,8 @@ function mostrarPopup(mensagem, cor = '#333', duracao_ms = null) {
     popup.style.backgroundColor = cor;
     popup.style.display = 'block';
 
+    console.log(`Mostrando popup: "${mensagem}" com cor ${cor} por ${duracao_ms}ms`);
+
     // limpa timeout anterior
     if (popupTimeout) {
         clearTimeout(popupTimeout);

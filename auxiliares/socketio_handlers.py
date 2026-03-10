@@ -4,7 +4,6 @@ import auxiliares.classes as classes
 from auxiliares.utils import verifica_cod_produto
 from datetime import datetime
 from time import sleep
-import threading
 
 
 def configurar_socketio_handlers(socketio, supervisor):
