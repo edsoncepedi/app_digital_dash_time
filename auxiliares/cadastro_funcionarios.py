@@ -239,7 +239,7 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
 
                 if posto_db.funcionario_id != func.id:
                     print(f"Acesso Negado: {func.nome} não autorizado para o posto {posto_nome}")
-                    supervisor.emit_alerta_posto(posto_nome, f"Acesso Negado: {func.nome} não autorizado para o posto {posto_nome}", cor="#ff0000", tempo=2500)
+                    supervisor.emit_alerta_posto(posto_nome, f"Acesso Negado: {func.nome} não autorizado para o posto {posto_nome}", cor="#ff0000", tempo=6000)
                     return jsonify({
                         "status": "forbidden", 
                         "message": f"Acesso Negado: {func.nome} não autorizado", 
