@@ -71,12 +71,15 @@ function tabelaLogs(logs){
         tr.innerHTML=`
         <td>${l.id}</td>
         <td>${l.ordem_codigo}</td>
+        <td>${l.produto}</td>
+        <td>${l.meta}</td>
         <td class="${statusClass}">
         ${l.status}
         </td>
         <td>${formatarData(l.armada_em)}</td>
         <td>${formatarData(l.inicio_em)}</td>
         <td>${formatarData(l.fim_em)}</td>
+        <td>${calcularDuracao(l.inicio_em,l.fim_em)}</td>
         `
 
         tbody.appendChild(tr)
@@ -251,28 +254,38 @@ function atualizarGraficoExperiencia(){
     const produtos = [...new Set(dados.map(d => d.produto))]
 
     const paleta = [
-        "#3b82f6", // azul
-        "#22c55e", // verde
-        "#f59e0b", // amarelo
-        "#ef4444", // vermelho
-        "#a855f7", // roxo
-        "#06b6d4", // ciano
-        "#f97316", // laranja
-        "#84cc16"  // limão
+        "#3b82f6",
+        "#22c55e",
+        "#f59e0b",
+        "#ef4444",
+        "#a855f7",
+        "#06b6d4",
+        "#f97316",
+        "#84cc16"
     ]
 
     const datasets = operadores.map((operador, index) => {
+
         const data = produtos.map(produto => {
+
             const item = dados.find(d =>
                 d.funcionario === operador && d.produto === produto
             )
-            return item ? item.horas : 0
+
+            // ALTERAÇÃO 1
+            // converter horas para minutos
+            return item ? item.horas * 60 : 0
+
         })
 
         return {
             label: operador,
             data: data,
-            backgroundColor: paleta[index % paleta.length]
+            backgroundColor: paleta[index % paleta.length],
+
+            // ALTERAÇÃO 2 (visual)
+            borderRadius: 6,
+            barThickness: 40
         }
     })
 
@@ -282,34 +295,81 @@ function atualizarGraficoExperiencia(){
 
     chartExperiencia = new Chart(ctx,{
         type:"bar",
+
         data:{
             labels: produtos,
             datasets: datasets
         },
+
         options:{
             responsive:true,
+            maintainAspectRatio:false,
+
+            // ALTERAÇÃO 3 (melhora hover)
+            interaction:{
+                mode:"index",
+                intersect:false
+            },
+
             plugins:{
                 legend:{
                     display:true,
                     labels:{
                         color:"#e5e7eb"
                     }
+                }, // <-- vírgula faltando aqui
+
+                // ALTERAÇÃO 4 (tooltip em minutos)
+                tooltip:{
+                    callbacks:{
+                        label:(context)=>{
+
+                            const minutos = context.raw
+                            const totalSeg = Math.round(minutos * 60)
+
+                            const h = Math.floor(totalSeg / 3600)
+                            const m = Math.floor((totalSeg % 3600) / 60)
+                            const s = totalSeg % 60
+
+                            const hh = String(h).padStart(2,"0")
+                            const mm = String(m).padStart(2,"0")
+                            const ss = String(s).padStart(2,"0")
+
+                            return `${context.dataset.label}: ${hh}:${mm}:${ss}`
+                        }
+                    }
                 }
             },
+
             scales:{
                 x:{
                     ticks:{
-                        color:"#e5e7eb"
+                        color:"#e5e7eb",
+                        maxRotation:45,
+                        minRotation:0
                     },
                     grid:{
                         color:"rgba(255,255,255,0.06)"
                     }
                 },
+
                 y:{
                     beginAtZero:true,
-                    ticks:{
-                        color:"#e5e7eb"
+
+                    // ALTERAÇÃO 5 (titulo do eixo)
+                    title:{
+                        display:true,
+                        text:"Tempo de experiência (min)",
+                        color:"#9ca3af"
                     },
+
+                    ticks:{
+                        color:"#e5e7eb",
+
+                        // ALTERAÇÃO 6 (unidade no eixo)
+                        callback:(value)=> formatarTempoMinOuHora(value)
+                    },
+
                     grid:{
                         color:"rgba(255,255,255,0.06)"
                     }
@@ -317,7 +377,7 @@ function atualizarGraficoExperiencia(){
             }
         }
     })
-
+    ajustarLarguraGraficoExperiencia(produtos.length)
 }
 
 function formatarData(dt){
@@ -381,6 +441,45 @@ function formatarHoras(horas){
     const ss = String(s).padStart(2,'0')
 
     return `${hh}:${mm}:${ss}`
+}
+
+function calcularDuracao(inicio, fim){
+
+    if(!inicio || !fim) return "-"
+
+    const t1 = new Date(inicio)
+    const t2 = new Date(fim)
+
+    let diff = Math.floor((t2 - t1) / 1000)
+
+    const h = Math.floor(diff / 3600)
+    const m = Math.floor((diff % 3600) / 60)
+    const s = diff % 60
+
+    const pad = n => String(n).padStart(2,'0')
+
+    return `${pad(h)}:${pad(m)}:${pad(s)}`
+}
+
+function ajustarLarguraGraficoExperiencia(qtdProdutos){
+    const wrap = document.getElementById("graficoExperienciaWrap")
+    if(!wrap) return
+
+    const larguraPorProduto = 180
+    const larguraMinima = Math.max(900, qtdProdutos * larguraPorProduto)
+
+    wrap.style.minWidth = `${larguraMinima}px`
+}
+
+function formatarTempoMinOuHora(min){
+
+    if(min < 60){
+        return min.toFixed(1) + " min"
+    }
+
+    const horas = min / 60
+
+    return horas.toFixed(2) + " h"
 }
 
 document.getElementById("filtroOperador").addEventListener("change",()=>{

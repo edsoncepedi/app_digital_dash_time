@@ -39,6 +39,7 @@ def rotas_dashboard(app):
                 {
                     "id": l.id,
                     "ordem_codigo": l.ordem.codigo_op if l.ordem else None,
+                    "produto": l.ordem.produto if l.ordem else None,
                     "meta": l.meta,
                     "status": l.status,
                     "armada_em": _dt(l.armada_em),
@@ -94,25 +95,34 @@ def rotas_dashboard(app):
         session = SessionLocal()
 
         query = text("""
-        SELECT
-            f.nome AS funcionario,
-            op.produto AS produto,
-            SUM(st.duracao_segundos)/3600.0 AS horas
+            SELECT
+                f.nome AS funcionario,
+                op.produto AS produto,
 
-        FROM sessoes_trabalho st
+                SUM(
+                    EXTRACT(EPOCH FROM (
+                        LEAST(st.horario_saida, lp.fim_em)
+                        -
+                        GREATEST(st.horario_entrada, lp.inicio_em)
+                    ))
+                ) / 3600.0 AS horas
 
-        JOIN funcionario f
-            ON f.id = st.funcionario_id
+            FROM sessoes_trabalho st
 
-        JOIN log_producao lp
-            ON st.horario_entrada <= lp.fim_em
-            AND st.horario_saida >= lp.inicio_em
+            JOIN funcionario f
+                ON f.id = st.funcionario_id
 
-        JOIN ordens_producao op
-            ON lp.ordem_id = op.id
+            JOIN log_producao lp
+                ON st.horario_entrada < lp.fim_em
+                AND st.horario_saida > lp.inicio_em
 
-        GROUP BY f.nome, op.produto
-        ORDER BY f.nome
+            JOIN ordens_producao op
+                ON lp.ordem_id = op.id
+
+            WHERE lp.fim_em IS NOT NULL
+
+            GROUP BY f.nome, op.produto
+            ORDER BY f.nome
         """)
 
         result = session.execute(query)

@@ -123,10 +123,13 @@ href="{{ url_for('static', filename='css/dashboard_producao.css') }}">
 <tr>
 <th class="col-id">ID</th>
 <th class="col-ordem">Ordem</th>
+<th class="col-ordem">Modelo</th>
+<th class="col-ordem">Quantidade</th>
 <th class="col-status">Status</th>
 <th class="col-data">Armada</th>
 <th class="col-data">Inicio</th>
 <th class="col-data">Fim</th>
+<th class="col-data">Duração</th>
 </tr>
 
 </thead>
@@ -193,7 +196,11 @@ href="{{ url_for('static', filename='css/dashboard_producao.css') }}">
 
 <br>
 
-<canvas id="graficoExperiencia"></canvas>
+<div class="chart-scroll">
+    <div id="graficoExperienciaWrap" class="chart-inner">
+        <canvas id="graficoExperiencia"></canvas>
+    </div>
+</div>
 
 <div class="table-wrapper">
 

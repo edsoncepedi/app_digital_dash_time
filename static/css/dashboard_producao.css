@@ -201,7 +201,7 @@ body{
 }
 
 .table-wrapper th{
-    text-align:left;
+    text-align:center;
     font-weight:600;
     padding:8px 10px;
     border-bottom:1px solid #1f2937;
@@ -210,6 +210,7 @@ body{
 }
 
 .table-wrapper td{
+    text-align:center;
     padding:7px 10px;
     border-bottom:1px solid #111827;
     color:#e5e7eb;
@@ -271,4 +272,69 @@ body{
 /* fallback */
 .status-default{
     color: #6b7280;
+}
+
+.table-wrapper th,
+.table-wrapper td{
+    border-right:1px solid #111827;
+}
+
+.table-wrapper thead th{
+    background: linear-gradient(
+        to bottom,
+        #1f2937,
+        #111827
+    );
+    color:#60a5fa;
+    font-weight:700;
+    border-bottom:2px solid #3b82f6;
+}
+
+.table-wrapper thead th:first-child{
+    border-top-left-radius:10px;
+}
+
+.table-wrapper thead th:last-child{
+    border-top-right-radius:10px;
+}
+
+.table-wrapper tbody tr:last-child td:first-child{
+    border-bottom-left-radius:10px;
+}
+
+.table-wrapper tbody tr:last-child td:last-child{
+    border-bottom-right-radius:10px;
+}
+
+.table-wrapper{
+    overflow:hidden;
+}
+
+.chart-scroll{
+    width:100%;
+    overflow-x:auto;
+    overflow-y:hidden;
+    padding-bottom:6px;
+}
+
+.chart-inner{
+    min-width:100%;
+}
+
+.chart-scroll::-webkit-scrollbar{
+    height:10px;
+}
+
+.chart-scroll::-webkit-scrollbar-thumb{
+    background:#1f2937;
+    border-radius:999px;
+}
+
+.chart-scroll::-webkit-scrollbar-track{
+    background:#0b1120;
+}
+
+#graficoExperiencia{
+    height:420px !important;
+    min-width:900px;
 }
