@@ -33,7 +33,7 @@ def criar_linha_aberta(posto_nome: str, palete: str | None = None) -> int:
     finally:
         session.close()
 
-def atualizar_produto_db(posto_nome: str, row_id: int, produto: str, ordem: str):
+def atualizar_produto_db(posto_nome: str, row_id: int, produto: str, palete: str | None, ordem: str):
     Model = POSTO_MODELS[posto_nome]
     session = SessionProducao()
     try:
@@ -41,6 +41,7 @@ def atualizar_produto_db(posto_nome: str, row_id: int, produto: str, ordem: str)
         if not row:
             return
         row.produto = str(produto)
+        row.palete = str(palete)
         row.ordem_producao = str(ordem)
         session.commit()
     finally:

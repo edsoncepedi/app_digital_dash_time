@@ -332,7 +332,7 @@ class Posto:
         logger.info("[%s] Produto %s associado à linha %d.", self.nome, produto, idx)
 
         if self.db_row_id_atual is not None:
-            atualizar_produto_db(self.id_posto, self.db_row_id_atual, produto, self.ordem_producao_atual)
+            atualizar_produto_db(self.id_posto, self.db_row_id_atual, produto, self.palete_atual, self.ordem_producao_atual)
 
 
     # ------------------------------------------------------------------
