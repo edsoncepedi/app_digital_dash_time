@@ -7,8 +7,7 @@ load_dotenv(dotenv_path=dotenv_path)
 ip = os.getenv('MQTT_BROKER_URL')
 ultimo_posto_bios = int(os.getenv('NUMERO_POSTOS', 2))
 
-cartao_palete = {" C3 C3 64 AD": "PLT01", 
+cartao_palete = {" 83 9A BC FC": "PLT01", 
                  " 39 7E E8 97": "PLT02",
-                 " 53 4A 68 AC": "PLT03",
-                 " 03 48 4E AC": "PLT04",
-                 " 83 9A BC FC": "PLT05"}
+                 " 73 84 74 FC": "PLT03",
+                 " C3 C1 A7 FC": "PLT04"}
