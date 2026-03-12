@@ -335,6 +335,15 @@ class PostoSupervisor:
     def mudanca_estado(self, posto_id, novo_estado):
         # LÓGICA DE ATIVAÇÃO DE BATEDOR
         if posto_id == 'posto_0':
+            if novo_estado == 0: # Entrou em Idle
+                try:
+                    self.socketio.emit(
+                        "reset_campos_posto",
+                        room=f"posto:posto_0"
+                    )
+                except Exception:
+                    print("[ERRO] - Falha ao emitir reset_campos_posto para o frontend.")
+                    pass
             if novo_estado == 3: # Entrou em Espera
                 if self.postos[posto_proximo(posto_id)].get_estado() == 0: # Idle
                     self.command(posto_id, "ativa_batedor")
@@ -360,13 +369,7 @@ class PostoSupervisor:
                 if self.postos[posto_anterior(posto_id)].get_estado() == 3: # Espera
                     self.command(posto_anterior(posto_id), "ativa_batedor")
                     self.emit_alerta_posto(posto_anterior(posto_id), f"Batedor do {self.postos[posto_anterior(posto_id)].nome_formatado} ativado pelo {self.postos[posto_id].nome_formatado}", "#2563EB", 2500)
-        
-        # LÓGICA DE ATIVAÇÃO DA CÂMERA
-        """
-        if novo_estado == 1: # Chegou no Posto
-            self.command(posto_id, "ativa_camera")
-        elif novo_estado == 3: # Entrou em Idle
-            self.command(posto_id, "desativa_camera")"""
+
 
     def transporte(self, posto_id):
         logger.debug("Chamando transporte do %s → %s", posto_anterior(posto_id), posto_id)

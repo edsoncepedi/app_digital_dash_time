@@ -241,17 +241,7 @@ class Posto:
         self.db_row_id_ultima = None
 
         self.ordem_producao_atual = None
-
-        if self.id_posto == "posto_0":
-            try:
-                self.socketio.emit(
-                    "reset_campos_posto",
-                    room=f"posto:{posto_id}"
-                )
-            except Exception:
-                print("[ERRO] - Falha ao emitir reset_campos_posto para o frontend.")
-                pass
-
+        
         self._notify()
     
     def insert_produto(self, produto):
