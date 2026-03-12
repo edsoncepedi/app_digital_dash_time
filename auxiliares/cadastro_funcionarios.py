@@ -47,15 +47,16 @@ def rehidratar_operadores(supervisor):
     finally:
         session.close()
 
+SESSION_TIMEOUT_SECONDS = 60
+SESSION_CHECK_INTERVAL_SECONDS = 6
+
 def expirar_sessoes_loop(supervisor):
-
     while True:
-
         session = SessionLocal()
 
         try:
-
-            limite = datetime.now() - timedelta(seconds=10)
+            agora = datetime.now()
+            limite = agora - timedelta(seconds=SESSION_TIMEOUT_SECONDS)
 
             sessoes = (
                 session.query(SessaoTrabalho)
@@ -69,7 +70,13 @@ def expirar_sessoes_loop(supervisor):
 
             for s in sessoes:
                 print(f"⚠️ Sessão expirada automaticamente: posto {s.posto_nome}")
-                s.horario_saida = datetime.now()
+
+                s.horario_saida = agora
+                try:
+                    delta = agora - s.horario_entrada
+                    s.duracao_segundos = int(delta.total_seconds())
+                except Exception as e:
+                    print("Falha ao calcular duração da sessão expirada:", e)
 
                 try:
                     supervisor.atualizar_operador_posto(s.posto_nome, None)
@@ -85,7 +92,7 @@ def expirar_sessoes_loop(supervisor):
         finally:
             session.close()
 
-        time.sleep(6)
+        time.sleep(SESSION_CHECK_INTERVAL_SECONDS)
 
 def rotas_funcionarios(app, mqttc, socketio, supervisor):
     
@@ -246,23 +253,43 @@ def rotas_funcionarios(app, mqttc, socketio, supervisor):
                         "autorizado": False
                     }), 200
 
-                sessao_existente = session.query(SessaoTrabalho).filter_by(
-                    posto_nome=posto_nome,
-                    horario_saida=None
-                ).first()
+                sessao_existente = (
+                    session.query(SessaoTrabalho)
+                    .filter_by(posto_nome=posto_nome, horario_saida=None)
+                    .first()
+                )
 
                 if sessao_existente:
-                    # Se quem está tentando entrar é o mesmo que já está logado
+                    # mesmo funcionário já está logado -> apenas mantém viva a sessão
                     if sessao_existente.funcionario_id == func.id:
-                        print(f"⚠️ {func.nome} já está logado no {supervisor.postos[posto_nome].nome_formatado}. Permitindo acesso sem criar nova sessão.")
-                        supervisor.emit_alerta_posto(posto_nome, f"⚠️ {func.nome} já está logado no {supervisor.postos[posto_nome].nome_formatado}. Permitindo acesso sem criar nova sessão.", cor="#ff0000", tempo=2500)
+                        sessao_existente.last_heartbeat = agora
+                        session.commit()
+
+                        try:
+                            supervisor.atualizar_operador_posto(posto_nome, {
+                                "id": func.id,
+                                "nome": func.nome,
+                                "foto": func.imagem_path
+                            })
+                        except Exception as e:
+                            print("⚠️ Falha ao atualizar supervisor:", repr(e))
+
+                        print(f"⚠️ {func.nome} já está logado no {supervisor.postos[posto_nome].nome_formatado}. Sessão reaproveitada.")
+                        supervisor.emit_alerta_posto(
+                            posto_nome,
+                            f"{func.nome} já estava logado. Sessão mantida.",
+                            cor="#ffaa00",
+                            tempo=2500
+                        )
+
                         return jsonify({
                             "status": "ok",
                             "message": f"Você já está logado, {func.nome}",
-                            "autorizado": True
+                            "autorizado": True,
+                            "sessao_reaproveitada": True
                         }), 200
 
-                    # Caso seja outro funcionário
+                    # outro funcionário tentando ocupar posto já ativo
                     print(f"Posto {posto_nome} já ocupado por outro funcionário.")
                     return jsonify({
                         "status": "error",
