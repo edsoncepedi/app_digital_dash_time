@@ -33,11 +33,13 @@ def front_mqtt_assoc(message, socketio, state, supervisor):
                 )
                 return
             elif state.producao_armada():
-                socketio.emit('aviso_ao_operador_assoc', {'mensagem': "Produção armada. Retire o palete do Posto 0 e Espere o início da produção.", 'cor': "#ffc107", 'tempo': 3000})
+                socketio.emit('aviso_ao_operador_assoc', {'mensagem': "Produção armada. Retire o palete do Posto 0 e Espere o início da produção.", 'cor': "#ffc107", 'tempo': None})
                 return
             else:
-                socketio.emit('aviso_ao_operador_assoc', {'mensagem': "Produção não iniciada. Retire o palete do Posto 0 e Espere o início da produção.", 'cor': "#dc3545", 'tempo': 3000})
+                socketio.emit('aviso_ao_operador_assoc', {'mensagem': "Produção não iniciada. Retire o palete do Posto 0 e Espere o início da produção.", 'cor': "#dc3545", 'tempo': None})
                 return
+        elif payload == "BD" and not state.producao_ligada():
+            socketio.emit("fechar_popup",room=f"posto:posto_0")
         elif payload in ["BS", "BT1", "BT2", "BD"]:
             return
         else:
