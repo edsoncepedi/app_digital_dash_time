@@ -6,10 +6,10 @@ let currentProd = 0; // guarda produção atual
 // Mapeamento DINÂMICO: estado da máquina -> título do card
 // Estados esperados: 0=IDLE, 1=BS, 2=BT1, 3=BT2, 4=BD
 const DEFAULT_STATE_TITLES = {
-  0: "Arrival",   // IDLE
+  0: "Espera",   // IDLE
   1: "Preparo",   // BS
   2: "Montagem",  // BT1
-  3: "Espera"     // BT2
+  3: "Bloqueado"  // BT2
 };
 // Se quiser sobrescrever: window.STATE_TITLES = { ... }
 /* ================================================== */
@@ -17,7 +17,7 @@ const DEFAULT_STATE_TITLES = {
 // Helpers de estado
 const stateIndex = (s) => (s && typeof s==='object' && 'value' in s) ? s.value : s;
 const stateName  = (s) => ['IDLE','BS','BT1','BT2','BD'][stateIndex(s)] || 'IDLE';
-const titleFor   = (s) => (window.STATE_TITLES || DEFAULT_STATE_TITLES)[stateIndex(s)] || 'Arrival';
+const titleFor   = (s) => (window.STATE_TITLES || DEFAULT_STATE_TITLES)[stateIndex(s)] || 'Espera';
 const titleClass = (title) => {
   title = (title || '').toLowerCase();
   if(title.startsWith('espe'))  return 'espera';
@@ -38,7 +38,7 @@ function buildCard(n){
       window.location.href = `/posto/${n}`;
   };
 
-  const initialTitle = 'Arrival';
+  const initialTitle = 'Espera';
 
   el.innerHTML = `
     <div class="posto-link-icon">↗</div>
