@@ -47,6 +47,9 @@ class PostoSupervisor:
 
         self.log_repo = LogProducaoRepo(db_func)
 
+        self._ultima_producao_projetada = 0
+        self.projecao_atual = "--"
+
 
         for p in self.postos.values():
             p.on_change = self._on_change
@@ -411,18 +414,22 @@ class PostoSupervisor:
         
         # LÓGICA DE ATUALIZAÇÃO GLOBAL E FIM DE PRODUÇÃO
         if snap.id == self._ultimo_posto_id():
-            
-            # --- NOVO CÁLCULO DE PROJEÇÃO E EMISSÃO DE UPDATE ---
-            tempo_atual = self._get_current_time_ms()
-            projecao_str = self._calcular_projecao_str(tempo_atual, snap.n_produtos)
-            
-            # Emite o evento de produção com a projeção calculada
-            self.socketio.emit("producao/update", {
-                "atual": snap.n_produtos,
-                "meta": self.meta_producao,
-                "projecao": projecao_str
-            })
-            # --- FIM DO UPDATE ---
+
+            if snap.n_produtos > self._ultima_producao_projetada:
+                self._ultima_producao_projetada = snap.n_produtos
+                # --- NOVO CÁLCULO DE PROJEÇÃO E EMISSÃO DE UPDATE ---
+                tempo_atual = self._get_current_time_ms()
+                projecao_str = self._calcular_projecao_str(tempo_atual, snap.n_produtos)
+                
+                self.projecao_atual = projecao_str
+
+                # Emite o evento de produção com a projeção calculada
+                self.socketio.emit("producao/update", {
+                    "atual": snap.n_produtos,
+                    "meta": self.meta_producao,
+                    "projecao": projecao_str
+                })
+
 
             if self.meta_producao > 0 and snap.n_produtos >= self.meta_producao: 
                 self.encerrar_producao(motivo_encerra="meta atingida")
@@ -466,7 +473,7 @@ class PostoSupervisor:
             prod_atual = self.postos[ultimo_id].contador_produtos
             
         # 3. NOVO: Calcular projeção aqui para enviar no sync inicial
-        projecao_str = self._calcular_projecao_str(tempo_ms, prod_atual)
+        projecao_str = self.projecao_atual
 
         return {
             "meta": self.meta_producao,
