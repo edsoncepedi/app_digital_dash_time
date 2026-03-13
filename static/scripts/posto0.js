@@ -198,14 +198,14 @@ function stateIndex(s){
 }
 
 const DEFAULT_STATE_TITLES = {
-    0:"Arrival",
+    0:"Espera",
     1:"Preparo",
     2:"Montagem",
-    3:"Espera"
+    3:"Bloqueado"
 };
 
 function titleFor(s){
-    return DEFAULT_STATE_TITLES[stateIndex(s)] || "Arrival";
+    return DEFAULT_STATE_TITLES[stateIndex(s)] || "Espera";
 }
 
 function stateName(s){
