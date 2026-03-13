@@ -1,7 +1,7 @@
 :root{
     --bg:#020617; --panel:#1f2125; --txt:#fff; --muted:#b5b8c2;
-    --arrival:#ffffff; --arrival-bg:#1070ff;
-    --espera:#eed896; --espera-bg:#eab30822;
+    --espera:#ffffff; --espera-bg:#1070ff;
+    --bloqueado:#eed896; --bloqueado-bg:#eab30822;
     --preparo:#f59e0b; --preparo-bg:#f59e0b22;
     --montagem:#22c55e; --montagem-bg:#22c55e22;
     --accent:#3b82f6;
@@ -78,10 +78,10 @@ body{
 .posto{position:relative;overflow:hidden;border-radius:18px}
 .head{font-size:26px;font-weight:900;letter-spacing:1px}
 .tag{position:absolute;top:0;left:0;right:0;height:56px;display:flex;align-items:center;padding:0 16px}
-.tag.arrival{background:var(--arrival-bg);color:var(--arrival)}
 .tag.espera{background:var(--espera-bg);color:var(--espera)}
 .tag.preparo{background:var(--preparo-bg);color:var(--preparo)}
 .tag.montagem{background:var(--montagem-bg);color:var(--montagem)}
+.tag.bloqueado{background:var(--bloqueado-bg);color:var(--bloqueado)}
 .row{display:flex;justify-content:space-between;align-items:center;margin:8px 0;gap:8px}
 .chip{font-size:16px;padding:6px 10px;border-radius:999px;background:#2f3136;color:var(--txt)}
 .btn{cursor:pointer;border:none}

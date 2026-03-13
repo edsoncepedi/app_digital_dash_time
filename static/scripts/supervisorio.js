@@ -20,10 +20,10 @@ const stateName  = (s) => ['IDLE','BS','BT1','BT2','BD'][stateIndex(s)] || 'IDLE
 const titleFor   = (s) => (window.STATE_TITLES || DEFAULT_STATE_TITLES)[stateIndex(s)] || 'Espera';
 const titleClass = (title) => {
   title = (title || '').toLowerCase();
-  if(title.startsWith('espe'))  return 'espera';
+  if(title.startsWith('bloq'))  return 'bloqueado';
   if(title.startsWith('mont'))  return 'montagem';
   if(title.startsWith('prep'))  return 'preparo';
-  return 'arrival';
+  return 'espera';
 };
 const fmtSec = (v) => (v==null || Number.isNaN(v)) ? '--' : (typeof v==='number' ? v.toFixed(2)+'s' : v);
 
@@ -151,7 +151,7 @@ function updateFromSnapshot(s){
   const tag  = document.getElementById(`p${n}-tag`);
   if(head) head.textContent = titulo;
   if(tag){
-    tag.classList.remove('arrival','montagem','preparo','espera');
+    tag.classList.remove('espera','montagem','preparo','bloqueado');
     tag.classList.add(titleClass(titulo));
   }
 
