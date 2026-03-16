@@ -325,9 +325,14 @@ function atualizarTabelaExperiencia(){
 function atualizarGraficoExperiencia(){
 
     const dados = filtrarExperiencia()
+    const modo = document.getElementById("modoExperiencia")?.value || "posto"
+
+    if(chartExperiencia){
+        chartExperiencia.destroy()
+        chartExperiencia = null
+    }
 
     if(dados.length === 0){
-        if(chartExperiencia) chartExperiencia.destroy()
         return
     }
 
@@ -338,7 +343,7 @@ function atualizarGraficoExperiencia(){
         .sort((a,b)=>{
             const na = parseInt((a||"").match(/\d+/)?.[0] || 0)
             const nb = parseInt((b||"").match(/\d+/)?.[0] || 0)
-            return na-nb
+            return na - nb
         })
 
     const paleta = [
@@ -354,65 +359,86 @@ function atualizarGraficoExperiencia(){
 
     const datasets = []
 
-    operadores.forEach((operador, opIndex)=>{
+    if(modo === "total"){
 
-        const corBase = paleta[opIndex % paleta.length]
+        operadores.forEach((operador, opIndex)=>{
 
-        postos.forEach((posto, postoIndex)=>{
+            const corBase = paleta[opIndex % paleta.length]
 
             const data = produtos.map(produto => {
-
-                const item = dados.find(d =>
-                    d.funcionario === operador &&
-                    d.produto === produto &&
-                    d.posto === posto
-                )
-
-                return item && item.horas > 0 ? item.horas * 60 : null
+                return dados
+                    .filter(d => d.funcionario === operador && d.produto === produto)
+                    .reduce((acc, d) => acc + (d.horas * 60), 0)
             })
-
-            const fator = postoIndex === 0 ? 0 : postoIndex * 0.25
-            const corVariada = variarCor(corBase, fator)
 
             datasets.push({
                 label: operador,
-                operador: operador,   // ← ADICIONE ISSO
+                operador: operador,
                 data: data,
-                backgroundColor: corVariada,
-                stack: operador,
-
-                borderRadius: {
-                    topLeft: 6,
-                    topRight: 6
-                },
-
+                backgroundColor: corBase,
+                hoverBackgroundColor: variarCor(corBase, 0.10),
+                borderRadius: 6,
+                borderSkipped: false,
                 borderColor: "rgba(0,0,0,0.25)",
                 borderWidth: 1,
-
-                barThickness: 40,
-
-                hidden: false,
-                _posto: posto,
-                postoLabel: formatarPosto(posto),
-                showInLegend: postoIndex === 0
+                barThickness: 40
             })
 
         })
 
-    })
+    } else {
+
+        operadores.forEach((operador, opIndex)=>{
+
+            const corBase = paleta[opIndex % paleta.length]
+
+            postos.forEach((posto, postoIndex)=>{
+
+                const data = produtos.map(produto => {
+                    const item = dados.find(d =>
+                        d.funcionario === operador &&
+                        d.produto === produto &&
+                        d.posto === posto
+                    )
+
+                    return item && item.horas > 0 ? item.horas * 60 : null
+                })
+
+                const fator = postoIndex === 0 ? 0 : postoIndex * 0.25
+                const corVariada = variarCor(corBase, fator)
+
+                datasets.push({
+                    label: operador,
+                    operador: operador,
+                    data: data,
+                    backgroundColor: corVariada,
+                    hoverBackgroundColor: variarCor(corVariada, 0.10),
+                    stack: operador,
+
+                    borderRadius: {
+                        topLeft: 6,
+                        topRight: 6
+                    },
+
+                    borderColor: "rgba(0,0,0,0.25)",
+                    borderWidth: 1,
+                    barThickness: 40,
+                    postoLabel: formatarPosto(posto),
+                    showInLegend: postoIndex === 0
+                })
+            })
+        })
+    }
 
     const ctx = document.getElementById("graficoExperiencia")
-
-    if(chartExperiencia) chartExperiencia.destroy()
+    if(!ctx) return
 
     chartExperiencia = new Chart(ctx,{
         type:"bar",
-
         data:{
             labels: produtos,
             datasets: datasets
         },
-
         options:{
             responsive:true,
             maintainAspectRatio:false,
@@ -431,6 +457,7 @@ function atualizarGraficoExperiencia(){
                     labels:{
                         color:"#e5e7eb",
                         filter:(item,data)=>{
+                            if(modo === "total") return true
                             const ds = data.datasets[item.datasetIndex]
                             return ds.showInLegend
                         }
@@ -441,20 +468,16 @@ function atualizarGraficoExperiencia(){
                         const operador = chart.data.datasets[legendItem.datasetIndex].operador
 
                         chart.data.datasets.forEach((ds,i)=>{
-
                             if(ds.operador === operador){
-
                                 const meta = chart.getDatasetMeta(i)
-
                                 meta.hidden = meta.hidden === null ? true : null
-
                             }
-
                         })
 
                         chart.update()
                     }
                 },
+
                 tooltip:{
                     callbacks:{
                         label:(context)=>{
@@ -462,16 +485,18 @@ function atualizarGraficoExperiencia(){
                             const valor = context.raw
                             if(!valor) return null
 
-                            const operador = context.dataset.operador
-                            const posto = context.dataset.postoLabel
+                            const totalSeg = Math.round(valor * 60)
+                            const h = Math.floor(totalSeg / 3600)
+                            const m = Math.floor((totalSeg % 3600) / 60)
+                            const s = totalSeg % 60
 
-                            const totalSeg = Math.round(valor*60)
+                            const tempo = `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`
 
-                            const h = Math.floor(totalSeg/3600)
-                            const m = Math.floor((totalSeg%3600)/60)
-                            const s = totalSeg%60
+                            if(modo === "total"){
+                                return `${context.dataset.operador}: ${tempo}`
+                            }
 
-                            return `${operador} • ${posto}: ${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`
+                            return `${context.dataset.operador} • ${context.dataset.postoLabel}: ${tempo}`
                         }
                     }
                 }
@@ -479,7 +504,7 @@ function atualizarGraficoExperiencia(){
 
             scales:{
                 x:{
-                    stacked:true,
+                    stacked: modo === "posto",
                     ticks:{
                         color:"#e5e7eb"
                     },
@@ -489,20 +514,17 @@ function atualizarGraficoExperiencia(){
                 },
 
                 y:{
-                    stacked:true,
+                    stacked: modo === "posto",
                     beginAtZero:true,
-
                     title:{
                         display:true,
                         text:"Tempo de experiência (min)",
                         color:"#9ca3af"
                     },
-
                     ticks:{
                         color:"#e5e7eb",
                         callback:(value)=>formatarTempoMinOuHora(value)
                     },
-
                     grid:{
                         color:"rgba(255,255,255,0.06)"
                     }
@@ -512,7 +534,6 @@ function atualizarGraficoExperiencia(){
     })
 
     ajustarLarguraGraficoExperiencia(produtos.length)
-
 }
 
 function formatarData(dt){
@@ -636,6 +657,13 @@ document.getElementById("filtroPosto").addEventListener("change",()=>{
     atualizarTabelaExperiencia()
     atualizarGraficoExperiencia()
 
+})
+
+document.getElementById("modoExperiencia").addEventListener("change",()=>{
+    const modo = document.getElementById("modoExperiencia").value
+    const filtroPosto = document.getElementById("filtroPosto")
+    filtroPosto.disabled = modo === "total"
+    atualizarGraficoExperiencia()
 })
 
 carregarDados()
