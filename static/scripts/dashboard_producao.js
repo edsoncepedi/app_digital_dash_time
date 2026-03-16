@@ -73,6 +73,7 @@ function tabelaLogs(logs){
         <td>${l.ordem_codigo}</td>
         <td>${l.produto}</td>
         <td>${l.meta}</td>
+        <td>${l.motivo_fim}</td>
         <td class="${statusClass}">
         ${l.status}
         </td>
