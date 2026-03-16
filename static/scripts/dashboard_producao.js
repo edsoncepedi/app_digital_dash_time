@@ -454,7 +454,17 @@ function atualizarGraficoExperiencia(){
 
             const corBase = paleta[opIndex % paleta.length]
 
-            postos.forEach((posto, postoIndex)=>{
+            const postosOperador = [...new Set(
+                dados
+                    .filter(d => d.funcionario === operador && d.horas > 0)
+                    .map(d => d.posto)
+            )].sort((a,b)=>{
+                const na = parseInt((a||"").match(/\d+/)?.[0] || 0)
+                const nb = parseInt((b||"").match(/\d+/)?.[0] || 0)
+                return na - nb
+            })
+
+            postosOperador.forEach((posto, postoIndex)=>{
 
                 const data = produtos.map(produto => {
                     const item = dados.find(d =>
