@@ -293,33 +293,95 @@ function filtrarExperiencia(){
 
 function atualizarTabelaExperiencia(){
 
-    const dados = filtrarExperiencia().sort((a, b) => {
-
-        if (a.funcionario !== b.funcionario)
-            return a.funcionario.localeCompare(b.funcionario)
-
-        if (a.posto !== b.posto)
-            return a.posto.localeCompare(b.posto)
-
-        return a.produto.localeCompare(b.produto)
-
-    })
+    const dados = filtrarExperiencia()
+    const modo = document.getElementById("modoExperiencia")?.value || "posto"
 
     const tbody = document.querySelector("#tabelaExperiencia tbody")
+    const thead = document.querySelector("#tabelaExperiencia thead")
+
     tbody.innerHTML = ""
 
-    dados.forEach(d=>{
-        const tr = document.createElement("tr")
+    if(modo === "total"){
 
-        tr.innerHTML = `
-        <td>${d.funcionario}</td>
-        <td>${formatarPosto(d.posto)}</td>
-        <td>${d.produto}</td>
-        <td>${formatarHoras(d.horas)}</td>
+        thead.innerHTML = `
+            <tr>
+                <th>Operador</th>
+                <th>Produto</th>
+                <th>Horas</th>
+            </tr>
         `
 
-        tbody.appendChild(tr)
-    })
+        const mapa = {}
+
+        dados.forEach(d=>{
+
+            const chave = `${d.funcionario}|${d.produto}`
+
+            if(!mapa[chave]){
+                mapa[chave] = {
+                    funcionario: d.funcionario,
+                    produto: d.produto,
+                    horas: 0
+                }
+            }
+
+            mapa[chave].horas += d.horas
+
+        })
+
+        const linhas = Object.values(mapa)
+
+        linhas.forEach(d=>{
+
+            const tr = document.createElement("tr")
+
+            tr.innerHTML = `
+                <td>${d.funcionario}</td>
+                <td>${d.produto}</td>
+                <td>${formatarHoras(d.horas)}</td>
+            `
+
+            tbody.appendChild(tr)
+        })
+
+    } else {
+
+        thead.innerHTML = `
+            <tr>
+                <th>Operador</th>
+                <th>Posto</th>
+                <th>Produto</th>
+                <th>Horas</th>
+            </tr>
+        `
+
+        const dadosOrdenados = dados.sort((a,b)=>{
+
+            if(a.funcionario !== b.funcionario)
+                return a.funcionario.localeCompare(b.funcionario)
+
+            if(a.posto !== b.posto)
+                return a.posto.localeCompare(b.posto)
+
+            return a.produto.localeCompare(b.produto)
+
+        })
+
+        dadosOrdenados.forEach(d=>{
+
+            const tr = document.createElement("tr")
+
+            tr.innerHTML = `
+                <td>${d.funcionario}</td>
+                <td>${formatarPosto(d.posto)}</td>
+                <td>${d.produto}</td>
+                <td>${formatarHoras(d.horas)}</td>
+            `
+
+            tbody.appendChild(tr)
+
+        })
+    }
 }
 
 function atualizarGraficoExperiencia(){
@@ -663,6 +725,7 @@ document.getElementById("modoExperiencia").addEventListener("change",()=>{
     const modo = document.getElementById("modoExperiencia").value
     const filtroPosto = document.getElementById("filtroPosto")
     filtroPosto.disabled = modo === "total"
+    atualizarTabelaExperiencia()
     atualizarGraficoExperiencia()
 })
 
