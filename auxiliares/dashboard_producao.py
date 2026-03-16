@@ -122,6 +122,7 @@ def rotas_dashboard(app):
 
                 WHERE lp.inicio_em IS NOT NULL
                 AND lp.fim_em IS NOT NULL
+                AND lp.motivo_fim = 'meta atingida'
 
             ) t
 
