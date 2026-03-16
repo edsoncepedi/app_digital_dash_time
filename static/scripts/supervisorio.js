@@ -2,6 +2,7 @@
 window.NUM_POSTOS = window.NUM_POSTOS ?? 3;
 let meta_prod = 100;
 let currentProd = 0; // guarda produção atual
+const transportes = {};
 
 // Mapeamento DINÂMICO: estado da máquina -> título do card
 // Estados esperados: 0=IDLE, 1=BS, 2=BT1, 3=BT2, 4=BD
@@ -67,11 +68,34 @@ function buildCard(n){
   return el;
 }
 
-// Monta o grid
-const grid = document.getElementById('grid-postos');
-for(let n=0; n<window.NUM_POSTOS; n++){
-  grid.appendChild(buildCard(n));
+function ajustarGrid() {
+
+  const grid = document.getElementById("grid-postos");
+
+  const cols = [];
+
+  for(let i=0;i<window.NUM_POSTOS;i++){
+
+    cols.push("280px");
+
+    if(i < window.NUM_POSTOS-1){
+      cols.push("120px");
+    }
+
+  }
+
+  grid.style.gridTemplateColumns = cols.join(" ");
 }
+
+// Monta o grid
+//const grid = document.getElementById('grid-postos');
+//for(let n=0; n<window.NUM_POSTOS; n++){
+//  grid.appendChild(buildCard(n));
+//}
+
+// Monta layout completo (postos + transportes)
+buildLayout(window.NUM_POSTOS);
+ajustarGrid();
 
 // Socket.IO
 const socket = io();
@@ -131,6 +155,13 @@ socket.on('global/sync_data', (data) => {
         Object.keys(data.operadores).forEach(postoId => {
             atualizarInterfaceOperador(postoId, data.operadores[postoId]);
         });
+    }
+    if (Array.isArray(data.transportes)) {
+      data.transportes.forEach(t => {
+        const chave = `${t.origem}->${t.destino}`;
+        transportes[chave] = t;
+      });
+      renderTransportes();
     }
 });
 
@@ -197,6 +228,34 @@ function updateFromSnapshot(s){
   }
 }
 
+function renderTransportes() {
+  for (let i = 0; i < window.NUM_POSTOS - 1; i++) {
+    const origem = `posto_${i}`;
+    const destino = `posto_${i + 1}`;
+    const chave = `${origem}->${destino}`;
+
+    const el = document.getElementById(`transporte-${i}-${i+1}`);
+    if (!el) continue;
+
+    const t = transportes[chave];
+
+    if (t) {
+      el.innerHTML = `
+        <div class="transport-chip ativo">
+          <span class="arrow">→</span>
+          <span class="produto">${t.produto}</span>
+        </div>
+      `;
+    } else {
+      el.innerHTML = `
+        <div class="transport-chip vazio">
+          <span class="arrow">→</span>
+        </div>
+      `;
+    }
+  }
+}
+
 // Eventos do backend
 socket.on('posto/state_snapshot', updateFromSnapshot);
 socket.on('posto/state_changed', updateFromSnapshot);
@@ -212,6 +271,17 @@ socket.on('producao/update', (data) => {
     setKpiProjecao(data.projecao); 
 });
 
+socket.on("transporte/update", (data) => {
+  const chave = data.trecho;
+
+  if (data.em_transporte) {
+    transportes[chave] = data;
+  } else {
+    delete transportes[chave];
+  }
+
+  renderTransportes();
+});
 
 // Comandos → backend → Supervisor → Posto → MQTT
 function cmd(n, command, args={}){
@@ -219,6 +289,31 @@ function cmd(n, command, args={}){
 }
 window.cmd = cmd; // para testar no console
 
+
+function buildLayout(numPostos) {
+  const wrap = document.getElementById("grid-postos");
+  wrap.innerHTML = "";
+
+  for (let n = 0; n < numPostos; n++) {
+    wrap.appendChild(buildCard(n));
+
+    if (n < numPostos - 1) {
+      wrap.appendChild(buildTransportNode(n, n + 1));
+    }
+  }
+}
+
+function buildTransportNode(origem, destino) {
+  const el = document.createElement("div");
+  el.className = "transport-node";
+  el.id = `transporte-${origem}-${destino}`;
+  el.innerHTML = `
+    <div class="transport-chip vazio">
+      <span class="arrow">→</span>
+    </div>
+  `;
+  return el;
+}
 
 async function checarPing() {
   const controller = new AbortController();

@@ -211,6 +211,7 @@ class Posto:
         self.on_change = None # callback opcional
         self.mudanca_estado = None # callback opcional
         self.transporte = None # callback opcional
+        self.movimento_produto = None # callback opcional
         self._last_update = time.time()
 
         self.funcionario_nome = None
@@ -394,6 +395,11 @@ class Posto:
                     arrival = round(self.timestamp["BS"] - self.timestamp["BD"], 2)
                     self.inicia_montagem(arrival)
                     self.atualizar_estado(1)
+                if callable(self.movimento_produto) and self.posto_anterior is not None:
+                    self.movimento_produto(
+                        evento="chegada_do_transporte",
+                        destino=self.id_posto
+                    )
                 return
 
             if payload == "BT1" and self.maquina_estado == 1:
@@ -431,6 +437,14 @@ class Posto:
                     fechar_linha(self.id_posto, self.db_row_id_atual)
                     self.db_row_id_ultima = self.db_row_id_atual
                     self.db_row_id_atual = None
+
+                if callable(self.movimento_produto) and self.produto_atual is not None and self.posto_posterior is not None:
+                    self.movimento_produto(
+                        evento="saida_para_transporte",
+                        origem=self.id_posto,
+                        destino=self.posto_posterior,
+                        produto=self.produto_atual
+                    )
 
                 self.produto_atual = None
                 self.palete_atual = None

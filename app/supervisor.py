@@ -49,12 +49,14 @@ class PostoSupervisor:
 
         self._ultima_producao_projetada = 0
         self.projecao_atual = "--"
+        self.transitos = {}
 
 
         for p in self.postos.values():
             p.on_change = self._on_change
             p.mudanca_estado = self.mudanca_estado
             p.transporte = self.transporte
+            p.movimento_produto = self.movimento_produto
 
 
     def reset(self):
@@ -70,12 +72,69 @@ class PostoSupervisor:
         self._snapshots.clear()
         self._bt2_reject_cooldown.clear()
 
+        self.transitos.clear()
+
         # reset postos
         for posto in self.postos.values():
             posto.reset()
      # -------------------------------------------------------------------------
      # ALERTA DIRECIONADO PARA UM POSTO (ROOM)
      # -------------------------------------------------------------------------
+
+    def _chave_trecho(self, origem_id: str, destino_id: str) -> str:
+        return f"{origem_id}->{destino_id}"
+
+    def iniciar_transporte(self, origem_id: str, destino_id: str, produto: str):
+        if not origem_id or not destino_id or not produto:
+            return
+
+        chave = self._chave_trecho(origem_id, destino_id)
+
+        self.transitos[chave] = {
+            "origem": origem_id,
+            "destino": destino_id,
+            "produto": produto,
+            "inicio_ts": time.time()
+        }
+
+        self.socketio.emit("transporte/update", {
+            "trecho": chave,
+            "origem": origem_id,
+            "destino": destino_id,
+            "produto": produto,
+            "em_transporte": True
+        })
+    
+    def finalizar_transporte_por_destino(self, destino_id: str):
+        chave_encontrada = None
+        dados = None
+
+        for chave, info in self.transitos.items():
+            if info["destino"] == destino_id:
+                chave_encontrada = chave
+                dados = info
+                break
+
+        if not chave_encontrada:
+            return
+
+        self.transitos.pop(chave_encontrada, None)
+
+        self.socketio.emit("transporte/update", {
+            "trecho": chave_encontrada,
+            "origem": dados["origem"],
+            "destino": dados["destino"],
+            "produto": dados["produto"],
+            "em_transporte": False
+        })
+
+    def movimento_produto(self, evento, origem=None, destino=None, produto=None):
+        if evento == "saida_para_transporte":
+            self.iniciar_transporte(origem, destino, produto)
+
+        elif evento == "chegada_do_transporte":
+            self.finalizar_transporte_por_destino(destino)
+        
     def emit_alerta_posto(self, posto_id: str, mensagem: str, cor: str = "#ff0000", tempo: int = 2500):
         """
         Emite popup somente para o posto específico.
@@ -481,7 +540,8 @@ class PostoSupervisor:
             "projecao": projecao_str, # <--- Enviando a projeção pronta
             "timer_ms": tempo_ms,
             "timer_running": self.timer_running,
-            "operadores": self.operadores_ativos
+            "operadores": self.operadores_ativos,
+            "transportes": list(self.transitos.values())
         }
 
     def _ultimo_posto_id(self):

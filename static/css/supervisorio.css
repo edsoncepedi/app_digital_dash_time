@@ -70,10 +70,11 @@ body{
 .value{font-size:36px;font-weight:800}
 .grid{
     display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(280px, auto));
+    grid-template-columns: 280px 120px 280px 120px 280px;
     gap:16px;
     margin-top:16px;
     justify-content:center;
+    align-items:center;
 }
 .posto{position:relative;overflow:hidden;border-radius:18px}
 .head{font-size:26px;font-weight:900;letter-spacing:1px}
@@ -207,4 +208,39 @@ body{
 
 .status-armed {
     background: #f59e0b; /* amarelo */
+}
+
+.transport-node {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+}
+
+.transport-chip {
+  min-width: 90px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: 0.2s ease;
+}
+
+.transport-chip.vazio {
+  opacity: 0.25;
+  border: 1px dashed rgba(255,255,255,.25);
+  color: #cbd5e1;
+}
+
+.transport-chip.ativo {
+  background: #1070ff;
+  color: white;
+  box-shadow: 0 0 18px rgba(245, 158, 11, .35);
+}
+
+.transport-chip .produto {
+  white-space: nowrap;
 }
