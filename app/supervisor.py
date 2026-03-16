@@ -541,6 +541,7 @@ class PostoSupervisor:
             "timer_ms": tempo_ms,
             "timer_running": self.timer_running,
             "operadores": self.operadores_ativos,
+            "order_id": self.state.get_ordem_atual(),
             "transportes": list(self.transitos.values())
         }
 

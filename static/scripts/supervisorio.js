@@ -137,7 +137,7 @@ socket.on('global/sync_data', (data) => {
 
     // C. Sincronizar Order ID (Opcional)
     if(data.order_id) {
-        document.getElementById("kpi-order").textContent = data.order_id;
+        document.getElementById("kpi-order").textContent = data.order_id ?? "--";
     }
 
     // D. Sincronizar Cronômetro
