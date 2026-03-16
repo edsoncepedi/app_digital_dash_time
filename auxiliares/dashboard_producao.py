@@ -97,6 +97,7 @@ def rotas_dashboard(app):
         query = text("""
             SELECT
                 funcionario,
+                posto,
                 produto,
                 SUM(duracao) / 3600.0 AS horas
             FROM (
@@ -104,6 +105,7 @@ def rotas_dashboard(app):
                 SELECT DISTINCT
                     f.id AS funcionario_id,
                     f.nome AS funcionario,
+                    st.posto_nome AS posto,
                     op.produto,
                     lp.id AS producao_id,
                     EXTRACT(EPOCH FROM (lp.fim_em - lp.inicio_em)) AS duracao
@@ -126,7 +128,7 @@ def rotas_dashboard(app):
 
             ) t
 
-            GROUP BY funcionario, produto
+            GROUP BY funcionario, posto, produto
             ORDER BY funcionario;
         """)
 
@@ -137,6 +139,7 @@ def rotas_dashboard(app):
         for row in result:
             dados.append({
                 "funcionario": row.funcionario,
+                "posto": row.posto,
                 "produto": row.produto,
                 "horas": float(row.horas)
             })

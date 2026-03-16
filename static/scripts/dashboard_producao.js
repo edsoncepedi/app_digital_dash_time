@@ -112,6 +112,19 @@ function tabelaSessoes(sessoes){
 
 }
 
+function variarCor(hex, fator){
+
+    const r = parseInt(hex.substr(1,2),16)
+    const g = parseInt(hex.substr(3,2),16)
+    const b = parseInt(hex.substr(5,2),16)
+
+    const nr = Math.min(255, Math.floor(r + (255-r)*fator))
+    const ng = Math.min(255, Math.floor(g + (255-g)*fator))
+    const nb = Math.min(255, Math.floor(b + (255-b)*fator))
+
+    return `rgb(${nr},${ng},${nb})`
+}
+
 function graficoPostos(sessoes){
 
     const contagem = {}
@@ -231,16 +244,20 @@ function popularFiltros(){
 
     const selectOperador = document.getElementById("filtroOperador")
     const selectProduto = document.getElementById("filtroProduto")
+    const selectPosto = document.getElementById("filtroPosto")
 
     selectOperador.innerHTML = ""
     selectProduto.innerHTML = ""
+    selectPosto.innerHTML = ""
 
     // opção TODOS
     selectOperador.appendChild(new Option("Todos",""))
     selectProduto.appendChild(new Option("Todos",""))
+    selectPosto.appendChild(new Option("Todos",""))
 
     const operadores = [...new Set(dadosExperiencia.map(d=>d.funcionario))]
     const produtos = [...new Set(dadosExperiencia.map(d=>d.produto))]
+    const postos = [...new Set(dadosExperiencia.map(d=>d.posto))]
 
     operadores.forEach(o=>{
         selectOperador.appendChild(new Option(o,o))
@@ -250,17 +267,23 @@ function popularFiltros(){
         selectProduto.appendChild(new Option(p,p))
     })
 
+    postos.forEach(p=>{
+        selectPosto.appendChild(new Option(formatarPosto(p),p))
+    })
+
 }
 
 function filtrarExperiencia(){
 
     const operador=document.getElementById("filtroOperador").value
     const produto=document.getElementById("filtroProduto").value
+    const posto=document.getElementById("filtroPosto").value
 
     return dadosExperiencia.filter(d=>{
 
         if(operador && d.funcionario!==operador) return false
         if(produto && d.produto!==produto) return false
+        if(posto && d.posto!==posto) return false
 
         return true
 
@@ -271,10 +294,15 @@ function filtrarExperiencia(){
 function atualizarTabelaExperiencia(){
 
     const dados = filtrarExperiencia().sort((a, b) => {
-        if (a.funcionario !== b.funcionario) {
+
+        if (a.funcionario !== b.funcionario)
             return a.funcionario.localeCompare(b.funcionario)
-        }
+
+        if (a.posto !== b.posto)
+            return a.posto.localeCompare(b.posto)
+
         return a.produto.localeCompare(b.produto)
+
     })
 
     const tbody = document.querySelector("#tabelaExperiencia tbody")
@@ -285,6 +313,7 @@ function atualizarTabelaExperiencia(){
 
         tr.innerHTML = `
         <td>${d.funcionario}</td>
+        <td>${formatarPosto(d.posto)}</td>
         <td>${d.produto}</td>
         <td>${formatarHoras(d.horas)}</td>
         `
@@ -305,6 +334,13 @@ function atualizarGraficoExperiencia(){
     const operadores = [...new Set(dados.map(d => d.funcionario))]
     const produtos = [...new Set(dados.map(d => d.produto))]
 
+    const postos = [...new Set(dadosExperiencia.map(d => d.posto))]
+        .sort((a,b)=>{
+            const na = parseInt((a||"").match(/\d+/)?.[0] || 0)
+            const nb = parseInt((b||"").match(/\d+/)?.[0] || 0)
+            return na-nb
+        })
+
     const paleta = [
         "#3b82f6",
         "#22c55e",
@@ -316,29 +352,53 @@ function atualizarGraficoExperiencia(){
         "#84cc16"
     ]
 
-    const datasets = operadores.map((operador, index) => {
+    const datasets = []
 
-        const data = produtos.map(produto => {
+    operadores.forEach((operador, opIndex)=>{
 
-            const item = dados.find(d =>
-                d.funcionario === operador && d.produto === produto
-            )
+        const corBase = paleta[opIndex % paleta.length]
 
-            // ALTERAÇÃO 1
-            // converter horas para minutos
-            return item ? item.horas * 60 : 0
+        postos.forEach((posto, postoIndex)=>{
+
+            const data = produtos.map(produto => {
+
+                const item = dados.find(d =>
+                    d.funcionario === operador &&
+                    d.produto === produto &&
+                    d.posto === posto
+                )
+
+                return item && item.horas > 0 ? item.horas * 60 : null
+            })
+
+            const fator = postoIndex === 0 ? 0 : postoIndex * 0.25
+            const corVariada = variarCor(corBase, fator)
+
+            datasets.push({
+                label: operador,
+                operador: operador,   // ← ADICIONE ISSO
+                data: data,
+                backgroundColor: corVariada,
+                stack: operador,
+
+                borderRadius: {
+                    topLeft: 6,
+                    topRight: 6
+                },
+
+                borderColor: "rgba(0,0,0,0.25)",
+                borderWidth: 1,
+
+                barThickness: 40,
+
+                hidden: false,
+                _posto: posto,
+                postoLabel: formatarPosto(posto),
+                showInLegend: postoIndex === 0
+            })
 
         })
 
-        return {
-            label: operador,
-            data: data,
-            backgroundColor: paleta[index % paleta.length],
-
-            // ALTERAÇÃO 2 (visual)
-            borderRadius: 6,
-            barThickness: 40
-        }
     })
 
     const ctx = document.getElementById("graficoExperiencia")
@@ -357,37 +417,61 @@ function atualizarGraficoExperiencia(){
             responsive:true,
             maintainAspectRatio:false,
 
-            // ALTERAÇÃO 3 (melhora hover)
             interaction:{
                 mode:"index",
                 intersect:false
             },
 
+            hover:{
+                mode:null
+            },
+
             plugins:{
                 legend:{
-                    display:true,
                     labels:{
-                        color:"#e5e7eb"
-                    }
-                }, // <-- vírgula faltando aqui
+                        color:"#e5e7eb",
+                        filter:(item,data)=>{
+                            const ds = data.datasets[item.datasetIndex]
+                            return ds.showInLegend
+                        }
+                    },
+                    onClick:(e, legendItem, legend)=>{
 
-                // ALTERAÇÃO 4 (tooltip em minutos)
+                        const chart = legend.chart
+                        const operador = chart.data.datasets[legendItem.datasetIndex].operador
+
+                        chart.data.datasets.forEach((ds,i)=>{
+
+                            if(ds.operador === operador){
+
+                                const meta = chart.getDatasetMeta(i)
+
+                                meta.hidden = meta.hidden === null ? true : null
+
+                            }
+
+                        })
+
+                        chart.update()
+                    }
+                },
                 tooltip:{
                     callbacks:{
                         label:(context)=>{
 
-                            const minutos = context.raw
-                            const totalSeg = Math.round(minutos * 60)
+                            const valor = context.raw
+                            if(!valor) return null
 
-                            const h = Math.floor(totalSeg / 3600)
-                            const m = Math.floor((totalSeg % 3600) / 60)
-                            const s = totalSeg % 60
+                            const operador = context.dataset.operador
+                            const posto = context.dataset.postoLabel
 
-                            const hh = String(h).padStart(2,"0")
-                            const mm = String(m).padStart(2,"0")
-                            const ss = String(s).padStart(2,"0")
+                            const totalSeg = Math.round(valor*60)
 
-                            return `${context.dataset.label}: ${hh}:${mm}:${ss}`
+                            const h = Math.floor(totalSeg/3600)
+                            const m = Math.floor((totalSeg%3600)/60)
+                            const s = totalSeg%60
+
+                            return `${operador} • ${posto}: ${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`
                         }
                     }
                 }
@@ -395,10 +479,9 @@ function atualizarGraficoExperiencia(){
 
             scales:{
                 x:{
+                    stacked:true,
                     ticks:{
-                        color:"#e5e7eb",
-                        maxRotation:45,
-                        minRotation:0
+                        color:"#e5e7eb"
                     },
                     grid:{
                         color:"rgba(255,255,255,0.06)"
@@ -406,9 +489,9 @@ function atualizarGraficoExperiencia(){
                 },
 
                 y:{
+                    stacked:true,
                     beginAtZero:true,
 
-                    // ALTERAÇÃO 5 (titulo do eixo)
                     title:{
                         display:true,
                         text:"Tempo de experiência (min)",
@@ -417,9 +500,7 @@ function atualizarGraficoExperiencia(){
 
                     ticks:{
                         color:"#e5e7eb",
-
-                        // ALTERAÇÃO 6 (unidade no eixo)
-                        callback:(value)=> formatarTempoMinOuHora(value)
+                        callback:(value)=>formatarTempoMinOuHora(value)
                     },
 
                     grid:{
@@ -429,7 +510,9 @@ function atualizarGraficoExperiencia(){
             }
         }
     })
+
     ajustarLarguraGraficoExperiencia(produtos.length)
+
 }
 
 function formatarData(dt){
@@ -542,6 +625,13 @@ document.getElementById("filtroOperador").addEventListener("change",()=>{
 })
 
 document.getElementById("filtroProduto").addEventListener("change",()=>{
+
+    atualizarTabelaExperiencia()
+    atualizarGraficoExperiencia()
+
+})
+
+document.getElementById("filtroPosto").addEventListener("change",()=>{
 
     atualizarTabelaExperiencia()
     atualizarGraficoExperiencia()
