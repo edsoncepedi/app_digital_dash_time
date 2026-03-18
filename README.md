@@ -1,144 +1,136 @@
-# DigitalDash - Sistema Supervisório de Linha de Produção
+# DigitalDash Time (app_digital_dash_time)
 
-O **DigitalDash** é uma solução completa de IoT e software para monitoramento, controle e rastreabilidade de linhas de montagem industrial. O sistema integra hardware (ESP32, leitores RFID/NFC, impressoras Zebra) com uma aplicação web em tempo real para gerenciar o fluxo de produção, calcular métricas de eficiência e controlar a alocação de operadores.
+Sistema supervisório de linha de produção com IoT, Web e análise de ciclo.
 
-## 📋 Funcionalidades Principais
+## 🚀 Visão Geral
 
-* **Monitoramento em Tempo Real:** Utiliza WebSockets (`Socket.IO`) para atualizar o status dos postos, contagem de produção e alertas instantaneamente no frontend.
-* **Rastreabilidade:** Associação lógica entre Paletes (NFC) e Produtos (Códigos Únicos), permitindo o rastreio individual em cada etapa.
-* **Gestão de Operadores:**
-    * Cadastro de funcionários com foto e Tag RFID.
-    * Controle de acesso aos postos via RFID (Check-in/Check-out).
-    * Alocação dinâmica de operadores por posto via painel administrativo.
-* **Máquina de Estados de Produção:** Lógica robusta para detectar etapas de montagem:
-    * *Chegada (BS)*, *Início Processo (BT1)*, *Fim Processo (BT2)* e *Saída (BD)*.
-    * Cálculo automático de tempos de **Ciclo, Montagem, Preparo, Espera e Transferência**.
-* **Projeção de Metas:** Algoritmo que projeta o tempo estimado para conclusão da meta baseada no ritmo atual da linha.
-* **Integração de Hardware:**
-    * Comunicação MQTT com dispositivos ESP32.
-    * Impressão automática de etiquetas (ZPL) em impressoras Zebra.
-    * Controle de atuadores (Buzzers e Torres de Luz).
-* **Persistência de Dados:** Histórico salvo em arquivos CSV/Excel e banco de dados SQLite (para funcionários).
+DigitalDash Time integra ESP32, leitores NFC/RFID, impressoras Zebra e interface web para:
+- Rastreamento de pallets/produtos
+- Controle de operadores (alocação, check-in/out)
+- Gestão de ordens de produção
+- Monitoramento em tempo real via Socket.IO
+- Cálculo de tempos de ciclo, preparação, montagem, espera e transferência
+- Histórico em CSV/SQLite
 
-## 🛠️ Tech Stack
+## 🧩 Arquitetura
 
-* **Linguagem:** Python 3.x
-* **Backend Framework:** Flask
-* **Tempo Real:** Flask-SocketIO
-* **IoT & Mensageria:** Flask-MQTT (Protocolo MQTT)
-* **Banco de Dados:** SQLAlchemy (SQLite)
-* **Processamento de Dados:** Pandas
-* **Hardware Suportado:** ESP32, Leitores NFC/RFID, Impressoras Zebra (ZPL).
+- `main.py` - ponto de entrada, cria Flask, MQTT, SocketIO e supervisor.
+- `app/supervisor.py` - controle do ciclo de produção e projeções.
+- `auxiliares/` - lógica de negócios, rotas, MQTT, classes e utilidades:
+  - `classes.py` - `Posto`, `Tabela_Assoc`, máquina de estados (BS, BT1, BT2, BD).
+  - `routes.py` - rotas web e API de controle.
+  - `mqtt_handlers.py` - mapeia payload MQTT para postos/ações.
+  - `socketio_handlers.py` - eventos de UI em tempo real.
+  - `associacao.py` - persistência de `palete <-> produto`.
+  - `cadastro_funcionarios.py` - CRUD de colaboradores.
+  - `dashboard_producao.py` - visão do fluxo e métricas.
+  - `cadastro_ordens.py` - ordem de produção (Meta, Produto, Status).
 
-## 📂 Estrutura do Projeto
+## 🛠️ Recursos Principais
 
-```text
-├── app/
-│   ├── supervisor.py            # Lógica central de supervisão, timers e projeções
-│   └── ...
-├── auxiliares/
-│   ├── associacao.py            # Lógica de vínculo Palete <-> Produto
-│   ├── banco_post.py            # Conexão com DB
-│   ├── cadastro_funcionarios.py # Rotas e lógica de CRUD de operadores
-│   ├── classes.py               # Definição das Classes (Posto, Tabela_Assoc) e Máquina de Estados
-│   ├── configuracoes.py         # Configurações globais (nº de postos, mapas de tags)
-│   ├── mqtt_handlers.py         # Roteamento de mensagens MQTT
-│   ├── routes.py                # Rotas principais do Flask (/controle, /supervisorio)
-│   └── utils.py                 # Utilitários (ZPL, backups, validações)
-├── static/                      # Arquivos estáticos (CSS, JS, Imagens dos funcionários)
-├── templates/                   # HTML (Jinja2)
-├── main.py                      # Ponto de entrada da aplicação
-└── .env                         # Variáveis de ambiente
+1. Máquina de estados por posto:
+   - IDLE (0)
+   - BS (1) - início do pallet
+   - BT1 (2) - início montagem
+   - BT2 (3) - fim montagem
+   - BD (4) - saída do posto
+
+2. Dados em tempo real via SocketIO para frontend.
+3. Integrado a MQTT => tópico padrão `rastreio_nfc/esp32/posto_<i>/dispositivo`.
+4. Impressão de QR code / ZPL (não em modo debug).
+5. Persistência em 
+   - CSV: `POSTO_0.csv`, `associacoes.csv`, etc.
+   - SQLite: funcionários, ordens, produção.
+6. Controle de produção:
+   - Start (com ordem aberta)
+   - Restart/reiniciar sistema
+   - Stop (fecha ordem e desliga produção)
+
+## 📁 Estrutura de Pastas
+
+- `app/` - gateway SocketIO + supervisor
+- `auxiliares/` - backend lógico, DB, associações
+- `static/` - JS/CSS/fotos funcionários, front web
+- `templates/` - Jinja2 HTML: `controle.html`, `supervisorio.html`, `posto.html`, `posto0.html`
+- `dados_producao/` - produção histórica por ano
+- `.env` - configurações de ambiente
+
+## ⚙️ Configuração
+
+1. Crie ambiente virtual:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-## 🚀 Instalação e Configuração
+2. Variáveis em `.env`:
 
-### 1. Pré-requisitos
-* Python 3.8+
-* Servidor MQTT (Ex: Mosquitto) rodando localmente ou na rede.
-
-### 2. Instalação das Dependências
-
-Crie um ambiente virtual e instale as bibliotecas necessárias:
-
-# Cria o ambiente virtual
-python -m venv venv
-
-# Ativa o ambiente (Windows)
-venv\Scripts\activate
-# Ativa o ambiente (Linux/Mac)
-source venv/bin/activate
-
-# Instala as dependências
-pip install flask flask-socketio flask-mqtt pandas sqlalchemy eventlet python-dotenv pyzbar
-
-### 3. Configuração do Ambiente (.env)
-
-Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
-
-# Configurações do Servidor
+```ini
 IP_EXT=0.0.0.0
 PORT_EXT=7000
-
-# Configurações MQTT
 MQTT_BROKER_URL=127.0.0.1
 MQTT_BROKER_PORT=1883
 MQTT_USERNAME=seu_usuario
 MQTT_PASSWORD=sua_senha
 MQTT_CLIENT_ID=Supervisor_PC
-
-# Segurança
+NUMERO_POSTOS=2
 ADMIN_DELETE_PASSWORD=senha_mestra
+DEBUG=1
+```
 
-### 4. Executando o Sistema
+3. Defina `auxiliares/configuracoes.py` com:
+- `cartao_palete` (mapeamento NFC -> palete)
+- `ultimo_posto_bios` (inteiro último posto)
 
+## ▶️ Executar
+
+```bash
 python main.py
+```
 
-O servidor iniciará (padrão porta 7000).
-* **Painel de Controle:** `http://localhost:7000/controle`
-* **Supervisório:** `http://localhost:7000/supervisorio`
-* **Posto Operador:** `http://localhost:7000/posto/<id>`
+Acesse:
+- `http://localhost:7000/controle` (painel de controle)
+- `http://localhost:7000/supervisorio` (supervisório)
+- `http://localhost:7000/posto/0` + `.../posto/1` etc.
 
-## ⚙️ Funcionamento da Lógica de Postos
+## 📡 MQTT
 
-Cada posto de trabalho é uma instância da classe `Posto` (em `classes.py`), operando como uma máquina de estados finitos alimentada por sensores via MQTT:
+- tópico: `rastreio_nfc/esp32/posto_<n>/dispositivo`
+- payloads suportados:
+  - `BS`, `BT1`, `BT2`, `BD`
+  - NFC: UID da tag para palete
+- emit para comandos internos: `ControleProducao_DD` e tópicos de planta.
 
-1.  **IDLE (Estado 0):** Aguardando produto.
-2.  **BS (Sensor de Entrada - Estado 1):** Produto detectado na esteira de entrada. Inicia contagem de *Preparo*.
-3.  **BT1 (Botão de Início - Estado 2):** Operador iniciou o trabalho. Inicia contagem de *Montagem*.
-4.  **BT2 (Botão de Fim - Estado 3):** Operador finalizou o trabalho. Inicia contagem de *Espera*.
-5.  **BD (Sensor de Saída - Estado 4):** Produto saiu do posto. Calcula o tempo de *Transferência* para o próximo posto e reinicia o ciclo.
+## 🧪 API de Controle
 
-### Integração com Hardware (Tópicos MQTT)
+- `GET /ping`
+- `POST /comando` com payload JSON:
+  - `imprime_produto`
+- `POST /enviar` com objeto `{tipo:'comando', mensagem:'Start'|'Restart'|'Stop', ordem:'...'}`
 
-O sistema escuta tópicos no padrão:
-`rastreio_nfc/esp32/posto_X/dispositivo`
+## 🧾 Lógica de Produção
 
-Payloads esperados:
-* `BS`, `BT1`, `BT2`, `BD`: Comandos de sensores/botões.
-* `UID_NFC`: Hexadecimal da tag NFC do palete (exclusivo Posto 0).
+1. `Start` exige ordem de produção aberta e meta > 0.
+2. Atualiza estado de postos prontos e arma produção no `State`.
+3. `Stop` finaliza ordem no DB, salva log, reinicia sistema.
+4. Posto 0 faz associação de palete -> produto quando recebe NFC.
+5. Postos usam `Posto.tratamento_dispositivo` para transições de estados.
 
-## 📊 Banco de Dados e Logs
+## 📌 Contribuições
 
-* **Funcionários:** Armazenados em SQLite (`funcionarios.db`).
-* **Produção:** Cada posto gera um arquivo `.csv` (ex: `POSTO_0.csv`) contendo logs detalhados de cada ciclo (timestamps de chegada, montagem, espera, etc).
-* **Associações:** O arquivo `associacoes.csv` mantém o vínculo histórico entre o Palete físico e o Produto lógico.
+- use branches `feature/...`
+- adicione testes para `auxiliares/testes` (se existente)
+- garanta compatibilidade com `eventlet` e `flask-socketio`
 
-## 🔄 Fluxo de Associação (Posto 0)
+## 🔧 Dicas Rápidas
 
-1.  O **Palete** (com Tag NFC) chega ao Posto 0.
-2.  O sistema lê o NFC via MQTT.
-3.  O sistema gera um novo **Código de Produto** (lógica baseada no dia do ano e versão).
-4.  O código é enviado para uma impressora Zebra (ZPL) via socket.
-5.  O vínculo `Palete <-> Produto` é salvo e o produto entra na linha.
-
-## 🤝 Contribuição
-
-1.  Faça um Fork do projeto.
-2.  Crie uma Branch para sua Feature (`git checkout -b feature/NovaFeature`).
-3.  Faça o Commit (`git commit -m 'Add some NovaFeature'`).
-4.  Push para a Branch (`git push origin feature/NovaFeature`).
-5.  Abra um Pull Request.
+- Execute Mosquitto local ou remota antes de rodar o app.
+- Para debug rápido: `DEBUG=1` para evitar impressora ZPL.
+- Reimponha`NUMERO_POSTOS` e atualize `ultimo_posto_bios` ao alterar postos.
+- Backup dos CSVs em `dados_producao/YYYY`
 
 ---
-*Desenvolvido por Edson Alves*
+
+> Desenvolvido por Edson Alves. Atualizado automaticamente via ferramenta de manutenção.
