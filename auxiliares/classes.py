@@ -173,6 +173,9 @@ class Tabela_Assoc:
             return resultado.tail(1)["produto"].astype(str).iloc[0]
         except Exception:
             return None
+    
+    def palete_associado(self, palete: str) -> bool:
+        return palete in self.paletes_assoc()
 
 
 associacoes = Tabela_Assoc("associacoes")
@@ -387,19 +390,8 @@ class Posto:
             self.timestamp[payload] = time.perf_counter()
 
             if payload == "BS":
-                if self.posto_anterior is not None:
-                    logger.debug("Chamando transporte do %s → %s", self.posto_anterior, self.id_posto)
-                    self.transporte(self.posto_anterior)
-                if self.maquina_estado == 0:
-                    logger.info("[%s] - ESTADO 1 - BS", self.nome)
-                    arrival = round(self.timestamp["BS"] - self.timestamp["BD"], 2)
-                    self.inicia_montagem(arrival)
-                    self.atualizar_estado(1)
-                if callable(self.movimento_produto) and self.posto_anterior is not None:
-                    self.movimento_produto(
-                        evento="chegada_do_transporte",
-                        destino=self.id_posto
-                    )
+                # BS permanece compatível mas não aciona o fluxo principal (agora via NFC PLT).
+                logger.info("[%s] - BS recebido (obsoleto), usando NFC para iniciar montagem.", self.nome)
                 return
 
             if payload == "BT1" and self.maquina_estado == 1:
@@ -455,11 +447,40 @@ class Posto:
 
         # Não é um timestamp: pode ser leitura NFC de palete
         elif verifica_palete_nfc(payload):
+            palete_lido = cartao_palete.get(payload)
+            if associacoes.palete_produto(palete_lido) is None and self.id_posto != "posto_0":
+                logger.warning("[%s] Palete NFC %s não associado a produto. Ignorando.", self.nome, palete_lido)
+                return
+            
+            if self.produto_finalizado_nesse_posto(associacoes.palete_produto(palete_lido)):
+                logger.warning("[%s] Produto do palete %s já finalizado nesse posto. Ignorando leitura.", self.nome, palete_lido)
+                return
+
             if self.produto_atual is None or self.palete_atual is None:
-                palete_lido = cartao_palete.get(payload)
                 if palete_lido is None:
                     logger.warning("[%s] Cartão %s não mapeado em cartao_palete.", self.nome, payload)
                     return
+
+                # Tratamento de palete NFC substitui BS
+                if self.posto_anterior is not None:
+                    logger.debug("Chamando transporte do %s → %s via NFC-palete", self.posto_anterior, self.id_posto)
+                    self.transporte(self.posto_anterior)
+
+                if self.maquina_estado == 0:
+                    logger.info("[%s] - ESTADO 1 - NFC palete (substitui BS)", self.nome)
+                    self.timestamp["BS"] = time.perf_counter()
+                    arrival = 0.0
+                    if self.timestamp.get("BD") is not None:
+                        arrival = round(self.timestamp["BS"] - self.timestamp["BD"], 2)
+                    self.inicia_montagem(arrival)
+                    self.atualizar_estado(1)
+
+                if callable(self.movimento_produto) and self.posto_anterior is not None:
+                    self.movimento_produto(
+                        evento="chegada_do_transporte",
+                        destino=self.id_posto
+                    )
+
                 if self.id_posto == "posto_0":
                     self.palete_atual = palete_lido
                     self._notify()
@@ -500,6 +521,44 @@ class Posto:
                 df[col] = pd.Series(dtype="object")
         return df
 
+    def montagem_completa(self, df: pd.DataFrame, codigo_produto: str) -> bool:
+        """
+        Verifica se a linha do produto está preenchida até 'tempo_espera'.
+
+        Campos obrigatórios:
+        - produto
+        - arrival_time
+        - tempo_preparo
+        - tempo_montagem
+        - tempo_espera
+        """
+
+        COLS_OBRIGATORIAS = [
+            "produto",
+            "arrival_time",
+            "tempo_preparo",
+            "tempo_montagem",
+            "tempo_espera",
+        ]
+
+        df_prod = df[df["produto"] == codigo_produto]
+
+        if df_prod.empty:
+            return False
+
+        linha = df_prod.iloc[-1]
+
+        for col in COLS_OBRIGATORIAS:
+            valor = linha[col]
+
+            if pd.isna(valor) or valor == "":
+                return False
+
+        return True
+    
+    def produto_finalizado_nesse_posto(self, produto: str) -> bool:
+        return self.montagem_completa(self.df_historico, produto)
+
     def salvarDadosLocais(self) -> None:
         try:
             self.df_historico.to_csv(self.csvPath, index=False)
@@ -517,6 +576,23 @@ class Posto:
     def atualizar_estado(self, estado: int) -> None:
         self.maquina_estado_anterior = self.maquina_estado
         self.maquina_estado = estado
+
+        if estado == 0:
+            print('[INFO] - ESTADO 0')
+        elif estado == 1:
+            print('[INFO] - ESTADO 1')
+            if self.id_posto != "posto_0":
+                self.ativa_camera()
+        elif estado == 2:
+            print('[INFO] - ESTADO 2')
+            if self.id_posto == "posto_0":
+                self.ativa_camera()
+        elif estado == 3:
+            print('[INFO] - ESTADO 3')
+            self.desativa_camera()
+        else:
+            print('[INFO] - ESTADO DESCONHECIDO')
+
         if callable(self.mudanca_estado):
             try:
                 self.mudanca_estado(self.id_posto, estado)

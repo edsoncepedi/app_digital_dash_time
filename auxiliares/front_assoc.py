@@ -1,5 +1,5 @@
 from auxiliares.utils import verifica_palete_nfc, cartao_palete
-from auxiliares.classes import verifica_estado_producao
+import auxiliares.classes as classes
 from auxiliares.configuracoes import ultimo_posto_bios
 
 
@@ -18,6 +18,11 @@ def front_mqtt_assoc(message, socketio, state, supervisor):
         if verifica_palete_nfc(payload):
             if state.producao_ligada():
                 palete = cartao_palete[payload]
+
+                if classes.associacoes.palete_produto(palete) is not None:
+                    logger.warning("[%s] Palete NFC %s associado a produto. Ignorando.", dispositivo, palete)
+                    socketio.emit('aviso_ao_operador_assoc', {'mensagem': f"Palete {palete} já associado a um produto da produção.", 'cor': "#dc3545", 'tempo': None})
+                    return
 
                 supervisor.postos['posto_0'].set_palete_atual(palete)
 

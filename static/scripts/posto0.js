@@ -182,6 +182,20 @@ socket.on("produto_associado", data => {
 
 })
 
+socket.on("limpar_associacao", () => {
+
+    const produtoInput = document.getElementById("produto-input");
+    const paleteInput  = document.getElementById("palete-input");
+
+    if(produtoInput){
+        produtoInput.value = '';
+    }
+
+    if(paleteInput){
+        paleteInput.value = '';
+    }
+})
+
 // quando reconectar, cancela monitoramento
 socket.on("connect", () => {
     socket.emit("join_posto", { posto: `posto_${POSTO_ID}` });

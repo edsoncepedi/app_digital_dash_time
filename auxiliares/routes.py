@@ -74,7 +74,10 @@ def configurar_rotas(app, mqttc, socketio, supervisor):
                     room=f"posto:posto_0"
                 )
                 
+                
                 classes.associacoes.associa(palete, produto)
+
+                print('Associando produto:', produto, 'ao palete:', palete)
 
                 supervisor.postos['posto_0'].insert_produto(produto)
 

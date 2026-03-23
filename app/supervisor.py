@@ -225,7 +225,7 @@ class PostoSupervisor:
             logger.warning("Posto %s não inicializado.", dispositivo)
             return
         
-        posto.controle_mqtt_camera(payload)
+        #posto.controle_mqtt_camera(payload)
 
         self.processar_evento_dispositivo(posto, payload)
 
@@ -410,6 +410,7 @@ class PostoSupervisor:
                 if self.postos[posto_proximo(posto_id)].get_estado() == 0: # Idle
                     self.command(posto_id, "ativa_batedor")
                     self.emit_alerta_posto(posto_id, f"Batedor do {self.postos[posto_id].nome_formatado} ativado", "#2563EB", 2500)
+                    self.socketio.emit("limpar_associacao", room=f"posto:posto_0")
                 else:
                     self.emit_alerta_posto(posto_id, f"Não foi possível ativar o batedor do {self.postos[posto_id].nome_formatado} porque o próximo posto não está em Idle.", "#ff0000", 2500)
         elif posto_id == self._ultimo_posto_id():
