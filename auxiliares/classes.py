@@ -215,6 +215,9 @@ class Posto:
         self.mudanca_estado = None # callback opcional
         self.transporte = None # callback opcional
         self.movimento_produto = None # callback opcional
+        self.trajetoria_correta = None # callback opcional
+        self.popup = None # callback opcional
+        
         self._last_update = time.time()
 
         self.funcionario_nome = None
@@ -450,11 +453,19 @@ class Posto:
             palete_lido = cartao_palete.get(payload)
             if associacoes.palete_produto(palete_lido) is None and self.id_posto != "posto_0":
                 logger.warning("[%s] Palete NFC %s não associado a produto. Ignorando.", self.nome, palete_lido)
+                self.popup(f"O Palete {palete_lido} não está associado a um produto válido.", "#ff0000", 2000)
                 return
             
             if self.produto_finalizado_nesse_posto(associacoes.palete_produto(palete_lido)):
                 logger.warning("[%s] Produto do palete %s já finalizado nesse posto. Ignorando leitura.", self.nome, palete_lido)
+                self.popup(f"O Palete {palete_lido} já passou por aqui!", "#ff0000", 2000)
                 return
+
+            if callable(self.trajetoria_correta) and self.posto_anterior is not None:
+                if not self.trajetoria_correta(associacoes.palete_produto(palete_lido), self.n_posto):
+                    logger.warning("[%s] Trajetória incorreta para palete %s (vindo de %s). Ignorando leitura.", self.nome, palete_lido, self.posto_anterior)
+                    self.popup(f"Palete {palete_lido} não deveria chegar por aqui. Verifique a trajetória.", "#ff0000", 2000)
+                    return
 
             if self.produto_atual is None or self.palete_atual is None:
                 if palete_lido is None:

@@ -57,6 +57,8 @@ class PostoSupervisor:
             p.mudanca_estado = self.mudanca_estado
             p.transporte = self.transporte
             p.movimento_produto = self.movimento_produto
+            p.trajetoria_correta = self.trajetoria_correta
+            p.popup = self._criar_popup_do_posto(p.id_posto)
 
 
     def reset(self):
@@ -80,6 +82,22 @@ class PostoSupervisor:
      # -------------------------------------------------------------------------
      # ALERTA DIRECIONADO PARA UM POSTO (ROOM)
      # -------------------------------------------------------------------------
+
+    def trajetoria_correta(self, produto: str, n_posto: int) -> bool:
+        for i in range(n_posto):
+            if not self.postos[f"posto_{i}"].produto_finalizado_nesse_posto(produto):
+                return False
+        return True
+
+    def _criar_popup_do_posto(self, posto_id: str):
+        def popup(mensagem: str, cor: str = "#ff0000", tempo: int = 2500):
+            self.emit_alerta_posto(
+                posto_id=posto_id,
+                mensagem=mensagem,
+                cor=cor,
+                tempo=tempo
+            )
+        return popup
 
     def _chave_trecho(self, origem_id: str, destino_id: str) -> str:
         return f"{origem_id}->{destino_id}"
